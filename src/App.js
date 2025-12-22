@@ -3391,105 +3391,7 @@ return (
               Skip →
             </button>
           )}
-          {state.loading && (
-            <div className="loading-modal-overlay" style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0, 0, 0, 0.2)',
-              backdropFilter: 'blur(15px)',
-              WebkitBackdropFilter: 'blur(15px)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 9999,
-              animation: 'fadeIn 0.3s ease-out'
-            }}>
-              <div className="loading-modal" style={{
-                background: 'rgba(255, 255, 255, 0.8)',
-                backdropFilter: 'blur(30px)',
-                WebkitBackdropFilter: 'blur(30px)',
-                borderRadius: '20px',
-                padding: '48px',
-                boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1)',
-                textAlign: 'center',
-                minWidth: '280px',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                animation: 'liquidSlide 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
-              }}>
-                <div className="loading-indicator" style={{
-                  margin: '0 auto 24px auto',
-                  width: '80px',
-                  height: '80px',
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <DeepGlLogo size={80} />
-                  
-                  {/* 첫 번째 파동 링 */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      left: '50%',
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      width: '80px',
-                      height: '80px',
-                      borderRadius: '50%',
-                      border: '1px solid rgba(107,114,128,0.3)',
-                      animation: 'loadingPulse1 2.5s ease-out infinite',
-                      pointerEvents: 'none'
-                    }}
-                  />
-                  
-                  {/* 두 번째 파동 링 */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      left: '50%',
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      width: '80px',
-                      height: '80px',
-                      borderRadius: '50%',
-                      border: '1px solid rgba(107,114,128,0.2)',
-                      animation: 'loadingPulse2 2.5s ease-out infinite',
-                      animationDelay: '0.8s',
-                      pointerEvents: 'none'
-                    }}
-                  />
-                  
-                  {/* 세 번째 파동 링 */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      left: '50%',
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      width: '80px',
-                      height: '80px',
-                      borderRadius: '50%',
-                      border: '1px solid rgba(107,114,128,0.15)',
-                      animation: 'loadingPulse3 2.5s ease-out infinite',
-                      animationDelay: '1.6s',
-                      pointerEvents: 'none'
-                    }}
-                  />
-                </div>
-                
-                <p style={{
-                  color: '#1D1D1F',
-                  fontSize: '17px',
-                  fontWeight: '500',
-                  margin: 0
-                }}>{currentMessage}</p>
-              </div>
-            </div>
-          )}
+          {state.loading && <LoadingModal message={currentMessage} />}
         </div>
       )}
 
@@ -3695,93 +3597,7 @@ return (
                 <span>이력서 제출하고 최종 분석하기</span>
               </button>
             </form>
-            {state.loading && (
-            <div className="loading-modal-overlay" style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0, 0, 0, 0.2)',
-              backdropFilter: 'blur(15px)',
-              WebkitBackdropFilter: 'blur(15px)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 9999,
-              animation: 'fadeIn 0.3s ease-out'
-            }}>
-              <div className="loading-modal" style={{
-                background: 'rgba(255, 255, 255, 0.8)',
-                backdropFilter: 'blur(30px)',
-                WebkitBackdropFilter: 'blur(30px)',
-                borderRadius: '20px',
-                padding: '48px',
-                boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1)',
-                textAlign: 'center',
-                minWidth: '280px',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                animation: 'liquidSlide 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
-              }}>
-                <div className="loading-indicator" style={{
-                  margin: '0 auto 24px auto',
-                  width: '80px',
-                  height: '80px',
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <DeepGlLogo size={80} />
-                  <div style={{
-                    position: 'absolute',
-                    left: '50%',
-                    top: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: '80px',
-                    height: '80px',
-                    borderRadius: '50%',
-                    border: '1px solid rgba(107,114,128,0.3)',
-                    animation: 'loadingPulse1 2.5s ease-out infinite',
-                    pointerEvents: 'none'
-                  }} />
-                  <div style={{
-                    position: 'absolute',
-                    left: '50%',
-                    top: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: '80px',
-                    height: '80px',
-                    borderRadius: '50%',
-                    border: '1px solid rgba(107,114,128,0.2)',
-                    animation: 'loadingPulse2 2.5s ease-out infinite',
-                    animationDelay: '0.8s',
-                    pointerEvents: 'none'
-                  }} />
-                  <div style={{
-                    position: 'absolute',
-                    left: '50%',
-                    top: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: '80px',
-                    height: '80px',
-                    borderRadius: '50%',
-                    border: '1px solid rgba(107,114,128,0.15)',
-                    animation: 'loadingPulse3 2.5s ease-out infinite',
-                    animationDelay: '1.6s',
-                    pointerEvents: 'none'
-                  }} />
-                </div>
-                
-                <p style={{
-                  color: '#1D1D1F',
-                  fontSize: '17px',
-                  fontWeight: '500',
-                  margin: 0
-                }}>{currentMessage}</p>
-              </div>
-            </div>
-          )}
+            {state.loading && <LoadingModal message={currentMessage} />}
           </div>
         </div>
       )}
@@ -4414,24 +4230,7 @@ return (
               뒤로 가기
             </button>
           </div>
-          {state.showProofreadingPopup && (
-            <>
-              <div className="modal-overlay" />
-              <div className="modal proofreading-modal">
-                <div className="modal-header">
-                  <span>첨삭 진행 중</span>
-                </div>
-                <div className="modal-content">
-                  <div className="loading-container">
-                    <div className="loading-indicator">
-                      <div className="progress-ring"></div>
-                    </div>
-                    <p>딥글이 자소서를 첨삭하는 중...</p>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
+         
           {state.loading && <LoadingModal message={currentMessage} />}
         </div>
       )}
