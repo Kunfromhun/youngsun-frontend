@@ -657,59 +657,83 @@ const DeepglWordmark = () => (
   </div>
 );
 
-// ✅ 동적 로딩 메시지 시스템
+// ✅ 동적 로딩 메시지 시스템 (엔드포인트별 interval 포함)
 const LOADING_STAGES = {
-  'pre-analyze': [
-    '{company}의 채용 공고 정보 수집 중...',
-    '{company}의 직무 요구사항 분석 중...',
-    '{company}가 원하는 인재상 파악 중...',
-    'Perplexity AI로 최신 트렌드 검색 중...',
-    '{company}에 필요한 핵심 역량 도출 중...'
-  ],
-  'analyze-all': [
-    '이력서 PDF 텍스트 추출 중...',
-    '{company}의 요구사항과 이력서 매칭 중...',
-    '관련 경험 추출 중...',
-    '{company}에 적합한 역량 분석 중...',
-    '최종 매칭 결과 정리 중...'
-  ],
-  'suggest-direction': [
-    '{topic} 주제에 맞는 경험 탐색 중...',
-    '{company}의 인재상과 경험 연결 중...',
-    '차별화 포인트 분석 중...',
-    '최적의 방향성 도출 중...'
-  ],
-  'generate-question': [
-    '{topic} 관련 질문 생성 중...',
-    '경험 구체화를 위한 핵심 포인트 분석 중...'
-  ],
-  'generate-episode': [
-    '대화 내용 분석 중...',
-    '{topic} 에피소드 구조화 중...',
-    'STAR 기법으로 에피소드 정리 중...',
-    '핵심 키워드 추출 중...'
-  ],
-  'generate-plan': [
-    '{company} 맞춤 자소서 구조 설계 중...',
-    '에피소드 활용 전략 수립 중...',
-    '문단별 역할 배분 중...',
-    'Master Instructions 생성 중...',
-    '{company} 연결성 전략 최적화 중...'
-  ],
-  'generate-cover-letter': [
-    '{company} 맞춤 자소서 작성 시작...',
-    '문단 1 작성 중...',
-    '문단 2 작성 중...',
-    '문단 3 작성 중...',
-    '전체 흐름 검토 중...'
-  ],
-  'edit-cover-letter': [
-    '자소서 문장별 분석 중...',
-    '어색한 표현 탐지 중...',
-    'AI 문체 자연스럽게 교정 중...',
-    '글자수 최적화 중...',
-    '최종 첨삭 완료 중...'
-  ]
+  'pre-analyze': {
+    messages: [
+      '{company}의 채용 공고 정보 수집 중...',
+      '{company}의 직무 요구사항 분석 중...',
+      '{company}가 원하는 인재상 파악 중...',
+      'Perplexity AI로 최신 트렌드 검색 중...',
+      '{company}에 필요한 핵심 역량 도출 중...'
+    ],
+    interval: 15000
+  },
+  'analyze-all': {
+    messages: [
+      '이력서 PDF 텍스트 추출 중...',
+      '{company}의 요구사항과 이력서 매칭 중...',
+      '관련 경험 추출 중...',
+      '{company}에 적합한 역량 분석 중...',
+      '최종 매칭 결과 정리 중...'
+    ],
+    interval: 15000
+  },
+  'suggest-direction': {
+    messages: [
+      '{topic} 주제에 맞는 경험 탐색 중...',
+      '{company}의 인재상과 경험 연결 중...',
+      '차별화 포인트 분석 중...',
+      '최적의 방향성 도출 중...'
+    ],
+    interval: 15000
+  },
+  'generate-question': {
+    messages: [
+      '{topic} 관련 질문 생성 중...',
+      '경험 구체화를 위한 핵심 포인트 분석 중...'
+    ],
+    interval: 15000
+  },
+  'generate-episode': {
+    messages: [
+      '대화 내용 분석 중...',
+      '{topic} 에피소드 구조화 중...',
+      'STAR 기법으로 에피소드 정리 중...',
+      '핵심 키워드 추출 중...'
+    ],
+    interval: 30000
+  },
+  'generate-plan': {
+    messages: [
+      '{company} 맞춤 자소서 구조 설계 중...',
+      '에피소드 활용 전략 수립 중...',
+      '문단별 역할 배분 중...',
+      'Master Instructions 생성 중...',
+      '{company} 연결성 전략 최적화 중...'
+    ],
+    interval: 30000
+  },
+  'generate-cover-letter': {
+    messages: [
+      '{company} 맞춤 자소서 작성 시작...',
+      '문단 1 작성 중...',
+      '문단 2 작성 중...',
+      '문단 3 작성 중...',
+      '전체 흐름 검토 중...'
+    ],
+    interval: 15000
+  },
+  'edit-cover-letter': {
+    messages: [
+      '자소서 문장별 분석 중...',
+      '어색한 표현 탐지 중...',
+      'AI 문체 자연스럽게 교정 중...',
+      '글자수 최적화 중...',
+      '최종 첨삭 완료 중...'
+    ],
+    interval: 15000
+  }
 };
 
 // ✅ 동적 로딩 메시지 커스텀 훅
@@ -727,19 +751,21 @@ const useLoadingMessage = () => {
   const startLoading = (endpoint, context = {}) => {
     if (timerRef.current) clearInterval(timerRef.current);
     
-    const stages = LOADING_STAGES[endpoint];
-    if (!stages) {
+    const config = LOADING_STAGES[endpoint];
+    if (!config) {
       setCurrentMessage(context.company ? `${context.company} 처리 중...` : '처리 중...');
       return;
     }
     
+    const { messages, interval } = config;
+    
     stageIndexRef.current = 0;
-    setCurrentMessage(formatMessage(stages[0], context));
+    setCurrentMessage(formatMessage(messages[0], context));
     
     timerRef.current = setInterval(() => {
-      stageIndexRef.current = (stageIndexRef.current + 1) % stages.length;
-      setCurrentMessage(formatMessage(stages[stageIndexRef.current], context));
-    }, 3000);
+      stageIndexRef.current = (stageIndexRef.current + 1) % messages.length;
+      setCurrentMessage(formatMessage(messages[stageIndexRef.current], context));
+    }, interval);
   };
 
   const stopLoading = () => {
@@ -1728,30 +1754,29 @@ function App() {
     }
   };
 
+  // ✅ 수정: 글래스모피즘 LoadingModal
   const LoadingModal = ({ message }) => (
     <div className="loading-modal-overlay" style={{
       position: 'fixed',
       top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0, 0, 0, 0.2)',
-      backdropFilter: 'blur(15px)',
-      WebkitBackdropFilter: 'blur(15px)',
+      background: 'rgba(0, 0, 0, 0.4)',
+      backdropFilter: 'blur(8px)',
+      WebkitBackdropFilter: 'blur(8px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      zIndex: 9999,
-      animation: 'fadeIn 0.3s ease-out'
+      zIndex: 9999
     }}>
       <div className="loading-modal" style={{
-        background: 'rgba(255, 255, 255, 0.8)',
-        backdropFilter: 'blur(30px)',
-        WebkitBackdropFilter: 'blur(30px)',
-        borderRadius: '20px',
+        background: 'rgba(255, 255, 255, 0.15)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderRadius: '24px',
         padding: '48px',
-        boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
         textAlign: 'center',
-        minWidth: '280px',
-        border: '1px solid rgba(255, 255, 255, 0.3)',
-        animation: 'liquidSlide 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+        minWidth: '320px',
+        border: '1px solid rgba(255, 255, 255, 0.3)'
       }}>
         <div className="loading-indicator" style={{
           margin: '0 auto 24px auto',
@@ -1772,7 +1797,7 @@ function App() {
             width: '80px',
             height: '80px',
             borderRadius: '50%',
-            border: '1px solid rgba(107,114,128,0.3)',
+            border: '1px solid rgba(255, 255, 255, 0.4)',
             animation: 'loadingPulse1 2.5s ease-out infinite',
             pointerEvents: 'none'
           }} />
@@ -1785,7 +1810,7 @@ function App() {
             width: '80px',
             height: '80px',
             borderRadius: '50%',
-            border: '1px solid rgba(107,114,128,0.2)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
             animation: 'loadingPulse2 2.5s ease-out infinite',
             animationDelay: '0.8s',
             pointerEvents: 'none'
@@ -1799,7 +1824,7 @@ function App() {
             width: '80px',
             height: '80px',
             borderRadius: '50%',
-            border: '1px solid rgba(107,114,128,0.15)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
             animation: 'loadingPulse3 2.5s ease-out infinite',
             animationDelay: '1.6s',
             pointerEvents: 'none'
@@ -1807,10 +1832,11 @@ function App() {
         </div>
         
         <p style={{
-          color: '#1D1D1F',
+          color: '#FFFFFF',
           fontSize: '17px',
           fontWeight: '500',
-          margin: 0
+          margin: 0,
+          textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)'
         }}>{message}</p>
       </div>
     </div>
