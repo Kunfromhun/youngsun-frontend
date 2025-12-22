@@ -657,6 +657,109 @@ const DeepglWordmark = () => (
   </div>
 );
 
+// ✅ 동적 로딩 메시지 시스템
+const LOADING_STAGES = {
+  'pre-analyze': [
+    '{company}의 채용 공고 정보 수집 중...',
+    '{company}의 직무 요구사항 분석 중...',
+    '{company}가 원하는 인재상 파악 중...',
+    'Perplexity AI로 최신 트렌드 검색 중...',
+    '{company}에 필요한 핵심 역량 도출 중...'
+  ],
+  'analyze-all': [
+    '이력서 PDF 텍스트 추출 중...',
+    '{company}의 요구사항과 이력서 매칭 중...',
+    '관련 경험 추출 중...',
+    '{company}에 적합한 역량 분석 중...',
+    '최종 매칭 결과 정리 중...'
+  ],
+  'suggest-direction': [
+    '{topic} 주제에 맞는 경험 탐색 중...',
+    '{company}의 인재상과 경험 연결 중...',
+    '차별화 포인트 분석 중...',
+    '최적의 방향성 도출 중...'
+  ],
+  'generate-question': [
+    '{topic} 관련 질문 생성 중...',
+    '경험 구체화를 위한 핵심 포인트 분석 중...'
+  ],
+  'generate-episode': [
+    '대화 내용 분석 중...',
+    '{topic} 에피소드 구조화 중...',
+    'STAR 기법으로 에피소드 정리 중...',
+    '핵심 키워드 추출 중...'
+  ],
+  'generate-plan': [
+    '{company} 맞춤 자소서 구조 설계 중...',
+    '에피소드 활용 전략 수립 중...',
+    '문단별 역할 배분 중...',
+    'Master Instructions 생성 중...',
+    '{company} 연결성 전략 최적화 중...'
+  ],
+  'generate-cover-letter': [
+    '{company} 맞춤 자소서 작성 시작...',
+    '문단 1 작성 중...',
+    '문단 2 작성 중...',
+    '문단 3 작성 중...',
+    '전체 흐름 검토 중...'
+  ],
+  'edit-cover-letter': [
+    '자소서 문장별 분석 중...',
+    '어색한 표현 탐지 중...',
+    'AI 문체 자연스럽게 교정 중...',
+    '글자수 최적화 중...',
+    '최종 첨삭 완료 중...'
+  ]
+};
+
+// ✅ 동적 로딩 메시지 커스텀 훅
+const useLoadingMessage = () => {
+  const [currentMessage, setCurrentMessage] = useState('');
+  const timerRef = useRef(null);
+  const stageIndexRef = useRef(0);
+
+  const formatMessage = (template, context) => {
+    return template
+      .replace('{company}', context.company || '회사')
+      .replace('{topic}', context.topic || '주제');
+  };
+
+  const startLoading = (endpoint, context = {}) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    
+    const stages = LOADING_STAGES[endpoint];
+    if (!stages) {
+      setCurrentMessage(context.company ? `${context.company} 처리 중...` : '처리 중...');
+      return;
+    }
+    
+    stageIndexRef.current = 0;
+    setCurrentMessage(formatMessage(stages[0], context));
+    
+    timerRef.current = setInterval(() => {
+      stageIndexRef.current = (stageIndexRef.current + 1) % stages.length;
+      setCurrentMessage(formatMessage(stages[stageIndexRef.current], context));
+    }, 3000);
+  };
+
+  const stopLoading = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setCurrentMessage('');
+    stageIndexRef.current = 0;
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  return { currentMessage, startLoading, stopLoading };
+};
+
 function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [screen, setScreen] = useState('start');
@@ -695,6 +798,9 @@ function App() {
   const editorRef = useRef(null);
   const proofreadingPopupRef = useRef(null);
 
+  // ✅ 동적 로딩 메시지 훅 사용
+  const { currentMessage, startLoading, stopLoading } = useLoadingMessage();
+
   const goToAnalysis = () => {
     setCurrentProcessStep(0);
     setScreen('analysis');
@@ -732,7 +838,7 @@ function App() {
 
   const goToCoverLetterView = () => {
     setCurrentProcessStep(4);
-    setIsProofreadingComplete(false); // ✅ 자소서 보기로 갈 때 첨삭 상태 초기화
+    setIsProofreadingComplete(false);
     setScreen('cover-letter-view');
   };
 
@@ -747,6 +853,7 @@ function App() {
     goToAnalysis();
   };
 
+  // ✅ 수정: handlePreAnalysisSubmit
   const handlePreAnalysisSubmit = async (e) => {
     e.preventDefault();
     if (
@@ -759,7 +866,10 @@ function App() {
       setError('모든 필드를 채워주세요');
       return;
     }
-    dispatch({ type: 'SET_LOADING', loading: true, message: '딥글이 회사 정보를 분석하는 중...' });
+    
+    startLoading('pre-analyze', { company: state.companyInfo.company });
+    dispatch({ type: 'SET_LOADING', loading: true, message: '' });
+    
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000);
@@ -793,16 +903,22 @@ function App() {
     } catch (error) {
       setError(`서버에 문제가 생겼습니다: ${error.message}`);
     }
+    
+    stopLoading();
     dispatch({ type: 'SET_LOADING', loading: false, message: '' });
   };
 
+  // ✅ 수정: handleAnalysisSubmit
   const handleAnalysisSubmit = async (e) => {
     e.preventDefault();
     if (!state.companyInfo.resumeFile) {
       setError('이력서를 업로드해주세요');
       return;
     }
-    dispatch({ type: 'SET_LOADING', loading: true, message: '딥글이 회사 정보와 이력서를 매칭하는 중...' });
+    
+    startLoading('analyze-all', { company: state.companyInfo.company });
+    dispatch({ type: 'SET_LOADING', loading: true, message: '' });
+    
     const formData = new FormData();
     formData.append('preAnalysisId', state.preAnalysisId);
     formData.append('resume', state.companyInfo.resumeFile);
@@ -824,11 +940,15 @@ function App() {
         } else {
           setError(`분석 실패: ${data.details}`);
         }
+        stopLoading();
+        dispatch({ type: 'SET_LOADING', loading: false, message: '' });
         return;
       }
       if (!data.resumeId || !data.analysisId) {
         console.error(`[${new Date().toISOString()}] [DEBUG-Stage2-Frontend] Error: Missing resumeId or analysisId in /analyze-all response`, data);
         setError('분석 실패: 서버에서 이력서 ID 또는 분석 ID를 반환하지 않았습니다. 다시 시도해주세요.');
+        stopLoading();
+        dispatch({ type: 'SET_LOADING', loading: false, message: '' });
         return;
       }
       const reindexedExperiences = (data.selectedExperiences || []).map((exp, idx) => ({
@@ -866,6 +986,8 @@ function App() {
       console.error(`[${new Date().toISOString()}] [DEBUG-Stage2-Frontend] Error in handleAnalysisSubmit:`, error.message);
       setError(`서버에 문제가 생겼습니다: ${error.message}`);
     }
+    
+    stopLoading();
     dispatch({ type: 'SET_LOADING', loading: false, message: '' });
   };
 
@@ -922,9 +1044,16 @@ function App() {
     };
   }, []);
 
+  // ✅ 수정: handleDirectionSuggestion
   const handleDirectionSuggestion = async (resumeId, analysisId) => {
     console.log(`[${new Date().toISOString()}] Starting handleDirectionSuggestion for resumeId: ${resumeId}, analysisId: ${analysisId}`);
-    dispatch({ type: 'SET_LOADING', loading: true, message: '딥글이 방향성을 제안하는 중...' });
+    
+    startLoading('suggest-direction', { 
+      company: state.companyInfo.company,
+      topic: state.questionTopics[currentExperienceStep - 1] || '주제'
+    });
+    dispatch({ type: 'SET_LOADING', loading: true, message: '' });
+    
     try {
       const requestBody = {
         resumeId,
@@ -998,6 +1127,8 @@ function App() {
       console.error(`[${new Date().toISOString()}] Error in handleDirectionSuggestion: ${error.message}`);
       setError(`방향성 제안에 실패했습니다: ${error.message}`);
     }
+    
+    stopLoading();
     dispatch({ type: 'SET_LOADING', loading: false, message: '' });
   };
 
@@ -1023,6 +1154,7 @@ function App() {
     }
   };
 
+  // ✅ 수정: handleStartExtraction
   const handleStartExtraction = async () => {
     console.log(`[${new Date().toISOString()}] Starting handleStartExtraction for step: ${currentExperienceStep}`);
     const currentTopicIndex = currentExperienceStep - 1;
@@ -1031,8 +1163,14 @@ function App() {
       setError('경험을 선택해주세요');
       return;
     }
-    dispatch({ type: 'SET_LOADING', loading: true, message: '딥글이 질문을 생성하는 중...' });
-    dispatch({ type: 'SET_CHAT_LOADING', chatLoading: true, message: '질문 준비 중...' });
+    
+    startLoading('generate-question', { 
+      company: state.companyInfo.company,
+      topic: state.questionTopics[currentTopicIndex] || '주제'
+    });
+    dispatch({ type: 'SET_LOADING', loading: true, message: '' });
+    dispatch({ type: 'SET_CHAT_LOADING', chatLoading: true, message: '' });
+    
     try {
       const currentTopic = state.questionTopics[currentTopicIndex];
       const selectedExperience = state.selectedExperiences[selectedIndex];
@@ -1062,6 +1200,9 @@ function App() {
         if (errorData.code === 'INVALID_RESUME_ID') {
           setError('이력서 ID가 일치하지 않습니다. 처음부터 다시 시작해주세요.');
           setScreen('start');
+          stopLoading();
+          dispatch({ type: 'SET_LOADING', loading: false, message: '' });
+          dispatch({ type: 'SET_CHAT_LOADING', chatLoading: false });
           return;
         }
         throw new Error('질문 생성에 실패했습니다.');
@@ -1071,6 +1212,9 @@ function App() {
       if (data.error) {
         setChatHistory([{ sender: '딥글', message: data.error }]);
         setError(data.details || '질문 생성에 문제가 생겼습니다.');
+        stopLoading();
+        dispatch({ type: 'SET_LOADING', loading: false, message: '' });
+        dispatch({ type: 'SET_CHAT_LOADING', chatLoading: false });
         return;
       }
      
@@ -1091,6 +1235,8 @@ function App() {
       console.error(`[${new Date().toISOString()}] Error in handleStartExtraction: ${error.message}`);
       setError(`채팅 시작에 실패했습니다: ${error.message}`);
     }
+    
+    stopLoading();
     dispatch({ type: 'SET_CHAT_LOADING', chatLoading: false });
     dispatch({ type: 'SET_LOADING', loading: false, message: '' });
   };
@@ -1226,9 +1372,16 @@ function App() {
     setScreen('plan-view');
   };
 
+  // ✅ 수정: handleSummarizeEpisodes
   const handleSummarizeEpisodes = async () => {
     console.log(`[${new Date().toISOString()}] Starting handleSummarizeEpisodes for topic: ${state.questionTopics[currentExperienceStep - 1]}`);
-    dispatch({ type: 'SET_LOADING', loading: true, message: '딥글이 에피소드를 생성하는 중...' });
+    
+    startLoading('generate-episode', { 
+      company: state.companyInfo.company,
+      topic: state.questionTopics[currentExperienceStep - 1] || '주제'
+    });
+    dispatch({ type: 'SET_LOADING', loading: true, message: '' });
+    
     try {
       const currentTopic = state.questionTopics[currentExperienceStep - 1];
       const currentTopicIndex = currentExperienceStep - 1;
@@ -1257,6 +1410,8 @@ function App() {
         if (errorData.code === 'INVALID_RESUME_ID') {
           setError('이력서 ID가 일치하지 않습니다. 처음부터 다시 시작해주세요.');
           setScreen('start');
+          stopLoading();
+          dispatch({ type: 'SET_LOADING', loading: false, message: '' });
           return;
         }
         throw new Error(`에피소드 생성에 실패했습니다: ${errorData.details || response.statusText}`);
@@ -1307,6 +1462,8 @@ function App() {
       console.error(`[${new Date().toISOString()}] Error in handleSummarizeEpisodes: ${error.message}`);
       setError(`에피소드 생성에 실패했습니다: ${error.message}`);
     }
+    
+    stopLoading();
     dispatch({ type: 'SET_LOADING', loading: false, message: '' });
   };
 
@@ -1315,6 +1472,7 @@ function App() {
     setScreen('cover-letter-completion');
   };
 
+  // ✅ 수정: handlePlanRequest
   const handlePlanRequest = async () => {
     console.log(`[${new Date().toISOString()}] Before /generate-plan:`, {
       resumeId: state.resumeId,
@@ -1322,7 +1480,10 @@ function App() {
       companyInfo: state.companyInfo,
       summarizedEpisodes: state.summarizedEpisodes
     });
-    dispatch({ type: 'SET_LOADING', loading: true, message: state.processing || '딥글이 계획서를 작성하는 중...' });
+    
+    startLoading('generate-plan', { company: state.companyInfo.company });
+    dispatch({ type: 'SET_LOADING', loading: true, message: '' });
+    
     try {
       if (!state.analysisId) {
         throw new Error('분석 데이터가 없습니다. 다시 시도해주세요.');
@@ -1371,16 +1532,22 @@ function App() {
       }
       setChatHistory([...chatHistory, { sender: '딥글', message: '서버에 문제가 생겼습니다...' }]);
     }
+    
+    stopLoading();
     dispatch({ type: 'SET_LOADING', loading: false, message: '' });
   };
 
+  // ✅ 수정: handleGenerateCoverLetter
   const handleGenerateCoverLetter = async () => {
     console.log(`[${new Date().toISOString()}] Before /generate-cover-letter:`, {
       resumeId: state.resumeId,
       analysisId: state.analysisId,
       plan: state.plan
     });
-    dispatch({ type: 'SET_LOADING', loading: true, message: '딥글이 자소서를 작성하는 중...' });
+    
+    startLoading('generate-cover-letter', { company: state.companyInfo.company });
+    dispatch({ type: 'SET_LOADING', loading: true, message: '' });
+    
     try {
       if (!state.plan || !state.resumeId || !state.analysisId) {
         throw new Error('계획서 또는 분석 데이터가 없습니다. 다시 시도해주세요.');
@@ -1425,6 +1592,8 @@ function App() {
       }
       setChatHistory([...chatHistory, { sender: '딥글', message: '서버에 문제가 생겼습니다...' }]);
     }
+    
+    stopLoading();
     dispatch({ type: 'SET_LOADING', loading: false, message: '' });
   };
 
@@ -1447,13 +1616,15 @@ function App() {
     }
   };
 
-  // ✅ 완전히 수정된 handleFinalizeCoverLetter 함수
+  // ✅ 수정: handleFinalizeCoverLetter
   const handleFinalizeCoverLetter = async () => {
     console.log(`[${new Date().toISOString()}] Finalizing cover letter:`, {
       resumeId: state.resumeId,
       paragraphs: state.coverLetterParagraphs
     });
-    dispatch({ type: 'SET_LOADING', loading: true, message: '딥글이 자소서를 첨삭하는 중...' });
+    
+    startLoading('edit-cover-letter', { company: state.companyInfo.company });
+    dispatch({ type: 'SET_LOADING', loading: true, message: '' });
     dispatch({ type: 'SET_PROOFREADING_POPUP', show: true });
     
     try {
@@ -1493,13 +1664,12 @@ function App() {
       console.log(`[${new Date().toISOString()}] [Proofreading] Response received:`, data);
       console.log(`[DEBUG] data.paragraphs:`, data.paragraphs);
       
-      // ✅ 첨삭된 텍스트로 coverLetterParagraphs 업데이트
       const editedParagraphs = data.paragraphs.map(p => {
         console.log(`[DEBUG] 문단 ${p.id}: original=${p.original?.substring(0, 50)}..., edited=${p.edited?.substring(0, 50)}...`);
         return {
           id: p.id,
-          text: p.edited,              // ✅ 첨삭본으로 교체!
-          originalText: p.original,    // 원본 보관 (비교용)
+          text: p.edited,
+          originalText: p.original,
           originalCharCount: p.originalCharCount,
           editedCharCount: p.editedCharCount
         };
@@ -1507,16 +1677,12 @@ function App() {
       
       console.log(`[DEBUG] editedParagraphs 최종:`, editedParagraphs);
       
-      // ✅ state 업데이트
       dispatch({
         type: 'SET_COVER_LETTER',
         paragraphs: editedParagraphs
       });
       
-      // ✅ 프로세스 스텝을 '최종검토'로 변경
       setCurrentProcessStep(5);
-      
-      // ✅ 첨삭 완료 상태 설정
       setIsProofreadingComplete(true);
       
       setChatHistory([...chatHistory, { 
@@ -1535,6 +1701,7 @@ function App() {
       }
       setChatHistory([...chatHistory, { sender: '딥글', message: `첨삭에 문제가 생겼습니다: ${error.message}` }]);
     } finally {
+      stopLoading();
       dispatch({ type: 'SET_LOADING', loading: false, message: '' });
       dispatch({ type: 'SET_PROOFREADING_POPUP', show: false });
     }
@@ -1652,19 +1819,6 @@ function App() {
 
   // End of Section 1
 
-
-
-// 랜덤 로딩 팁 배열 추가
-const LOADING_TIPS = [
-  '딥글은 확인된 최신정보만을 기반으로 분석합니다',
-  '경험구체화 채팅을 할 때, 답변이 생각나지 않으면 질문 옆의 아이콘을 눌러보세요',
-  '경험구체화 채팅이 어려우시면, 다른 인공지능을 활용하여 답변을 생각해보세요',
-  '딥글의 자소서는 논리적으로 완벽하지만, 인공지능의 문체를 가지고 있을 확률이 있습니다',
-  '딥글의 분석에는 할루시네이션이 포함되어있지 않으니, 안심하고 사용하세요',
-  '딥글이 생성한 자소서는 인공지능의 문체가 남아 있지만, 사용자가 직접 조금만 수정해도 그 문체가 강력하게 줄어듭니다'
-];
-
-const getRandomTip = () => LOADING_TIPS[Math.floor(Math.random() * LOADING_TIPS.length)];
 
 // 글래스모피즘 힌트 아이콘 컴포넌트 - 토글 방식으로 변경
 const HintIcon = ({ onClick, isActive }) => (
@@ -3306,7 +3460,7 @@ return (
                   fontSize: '17px',
                   fontWeight: '500',
                   margin: 0
-                }}>{getRandomTip()}</p>
+                }}>{currentMessage}</p>
               </div>
             </div>
           )}
@@ -3457,7 +3611,7 @@ return (
                     fontSize: '17px',
                     fontWeight: '500',
                     margin: 0
-                  }}>{getRandomTip()}</p>
+                  }}>{currentMessage}</p>
                 </div>
               </div>
             )}
@@ -3598,7 +3752,7 @@ return (
                   fontSize: '17px',
                   fontWeight: '500',
                   margin: 0
-                }}>{getRandomTip()}</p>
+                }}>{currentMessage}</p>
               </div>
             </div>
           )}
@@ -3705,7 +3859,7 @@ return (
         <span>경험 구체화하러 가기</span>
       </button>
     </div>
-    {state.loading && <LoadingModal message={getRandomTip()} />}
+    {state.loading && <LoadingModal message={currentMessage} />}
   </div>
 )}
 
@@ -4056,7 +4210,7 @@ return (
               ))}
             </div>
           </div>
-          {state.loading && <LoadingModal message={getRandomTip()} />}
+          {state.loading && <LoadingModal message={currentMessage} />}
         </div>
       )}
 
@@ -4121,7 +4275,7 @@ return (
               </>
             )}
           </div>
-          {state.loading && <LoadingModal message={getRandomTip()} />}
+          {state.loading && <LoadingModal message={currentMessage} />}
         </div>
       )}
 
@@ -4155,7 +4309,7 @@ return (
           ) : (
             <p>계획서가 없습니다. 다시 요청해 주세요.</p>
           )}
-          {state.loading && <LoadingModal message={getRandomTip()} />}
+          {state.loading && <LoadingModal message={currentMessage} />}
         </div>
       )}
 
@@ -4252,7 +4406,7 @@ return (
               </div>
             </>
           )}
-          {state.loading && <LoadingModal message={getRandomTip()} />}
+          {state.loading && <LoadingModal message={currentMessage} />}
         </div>
       )}
 
@@ -4377,7 +4531,7 @@ return (
               </div>
             </>
           )}
-          {state.loading && <LoadingModal message={getRandomTip()} />}
+          {state.loading && <LoadingModal message={currentMessage} />}
         </div>
       )}
 
@@ -4406,7 +4560,7 @@ return (
               뒤로 가기
             </button>
           </div>
-          {state.loading && <LoadingModal message={getRandomTip()} />}
+          {state.loading && <LoadingModal message={currentMessage} />}
         </div>
       )}
     </div>
