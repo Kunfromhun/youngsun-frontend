@@ -3651,13 +3651,16 @@ return (
           <h2>딥글이 분석한 초기 역량 확인</h2>
           <p className="description-text">딥글이 회사 정보를 분석해서 자소서에 필요한 초기 역량을 골랐습니다. Perplexity 검색 결과를 기반으로 분석했습니다. 확인하고 이력서를 업로드하세요.</p>
           <div className="card-grid">
-            {state.preCompetencies.slice(0, state.questionTopics.length).map((comp, index) => (
-              <div key={index} className="card">
-                <p className="card-title">{comp.keyword}</p>
-                <p className="card-description">{comp.reason}</p>
-              </div>
-            ))}
-          </div>
+  {state.preCompetencies.slice(0, state.questionTopics.length).map((comp, index) => (
+    <div key={index} className="card">
+      <p className="card-title" style={{ fontWeight: 800 }}>
+        {(comp.talentProfile || comp.keyword)} : {comp.keyword}
+      </p>
+      <p className="card-description">{comp.reason}</p>
+    </div>
+  ))}
+</div>
+
           {state.source && state.source.length > 0 && (
             <div className="source-links">
               {state.source.map((url, index) => (
@@ -3795,7 +3798,8 @@ return (
             {state.selectedForTopics.map((item, index) => (
               <div key={index} className="card selected">
                 <p className="card-title">{item.topic}</p>
-                <p>역량: {item.competency}</p>
+                <p><strong>인재상:</strong> {item.talentProfile || '분석 중...'}</p>
+                <p><strong>핵심역량:</strong> {item.competency}</p>
                 <p className="card-description">{item.reason}</p>
               </div>
             ))}
@@ -3848,14 +3852,16 @@ return (
               <div className="card-section">
                 <h4>매칭 정보</h4>
                 <p><strong>주제:</strong> {exp.topic}</p>
-                <p><strong>목표 역량:</strong> {exp.competency}</p>
+                <p><strong>인재상:</strong> {exp.talentProfile || '분석 중...'}</p>
+                <p><strong>핵심역량:</strong> {exp.competency}</p>
               </div>
            
-              {/* 핵심: whySelected 분석 결과 - 새로운 필드 구조 */}
+              {/* 핵심: whySelected 분석 결과 - 3-Way 분석 구조 */}
               <div className="card-section">
                 <h4>딥글 분석 결과</h4>
                 <p><strong>주제-경험:</strong> {exp.whySelected?.["주제-경험"] || '주제 연결성 분석 필요'}</p>
-                <p><strong>역량-경험:</strong> {exp.whySelected?.["역량-경험"] || '역량 증명 분석 필요'}</p>
+                <p><strong>인재상-역량-경험:</strong> {exp.whySelected?.["인재상-역량-경험"] || exp.whySelected?.["역량-경험"] || '역량 증명 분석 필요'}</p>
+                <p><strong>회사-경험:</strong> {exp.whySelected?.["회사-경험"] || '회사 연결성 분석 필요'}</p>
               </div>
 
               {/* 통합분석 섹션 - integratedAnalysis 필드 사용 */}
