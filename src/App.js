@@ -899,7 +899,7 @@ function App() {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000);
-      const response = await fetch('https://youngsun-xi.vercel.app/pre-analyze', {
+      const response = await fetch('http://localhost:3001/pre-analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -951,7 +951,7 @@ function App() {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000);
-      const response = await fetch('https://youngsun-xi.vercel.app/analyze-all', {
+      const response = await fetch('http://localhost:3001/analyze-all', {
         method: 'POST',
         body: formData,
         signal: controller.signal,
@@ -1088,7 +1088,7 @@ function App() {
         questionTopics: state.questionTopics
       };
    
-      const response = await fetch('https://youngsun-xi.vercel.app/suggest-direction', {
+      const response = await fetch('http://localhost:3001/suggest-direction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
@@ -1208,7 +1208,7 @@ function App() {
       setQuestionCount(0);
       setCurrentQuestionHint('');
      
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-question', {
+      const response = await fetch('http://localhost:3001/generate-question', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1278,7 +1278,7 @@ function App() {
         console.log(`[${new Date().toISOString()}] step ${currentStep - 1} question success`);
       }
       dispatch({ type: 'SET_CHAT_LOADING', chatLoading: true, message: '생각 중...' });
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-question', {
+      const response = await fetch('http://localhost:3001/generate-question', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1419,7 +1419,7 @@ function App() {
         throw new Error(`주제 ${currentTopic}에 선택된 경험이 없습니다.`);
       }
       console.log(`[${new Date().toISOString()}] Sending /generate-episode with selectedExperienceIndices:`, state.selectedExperiencesIndices);
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-episode', {
+      const response = await fetch('http://localhost:3001/generate-episode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1516,7 +1516,7 @@ function App() {
       }
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 600000);
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-plan', {
+      const response = await fetch('http://localhost:3001/generate-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1580,7 +1580,7 @@ function App() {
       }
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000);
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-cover-letter', {
+      const response = await fetch('http://localhost:3001/generate-cover-letter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1665,7 +1665,7 @@ function App() {
       
       console.log(`[${new Date().toISOString()}] [Proofreading] Sending request to /edit-cover-letter`);
       
-      const response = await fetch('https://youngsun-xi.vercel.app/edit-cover-letter', {
+      const response = await fetch('http://localhost:3001/edit-cover-letter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1907,10 +1907,7 @@ const HintIcon = ({ onClick, isActive }) => (
 
 // 힌트 표시 상태 관리
 const [showHintInBubble, setShowHintInBubble] = useState(false);
-
-//////1234/////
-
-
+///1234
 // 안전한 렌더링 헬퍼 함수
 const safeRender = (value, fallback = '정보 없음') => {
   if (value === null || value === undefined) return fallback;
@@ -1920,32 +1917,150 @@ const safeRender = (value, fallback = '정보 없음') => {
   return fallback;
 };
 
+// 🔥 v5.5: 문단별 생성계획 카드 컴포넌트
+const ParagraphPlanCard = ({ instruction, index }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const handleClick = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  return (
+    <div
+      onClick={handleClick}
+      style={{
+        width: '100%',
+        padding: '20px 24px',
+        marginBottom: '12px',
+        backgroundColor: '#ffffff',
+        borderRadius: '12px',
+        boxShadow: isExpanded
+          ? '0 4px 12px rgba(0, 0, 0, 0.10)'
+          : '0 2px 8px rgba(0, 0, 0, 0.06)',
+        cursor: 'pointer',
+        transition: 'box-shadow 0.2s ease, transform 0.1s ease',
+        border: '1px solid #e5e7eb',
+        minHeight: isExpanded ? 'auto' : '60px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: isExpanded ? 'flex-start' : 'center'
+      }}
+      onMouseEnter={(e) => {
+        if (!isExpanded) {
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!isExpanded) {
+          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.06)';
+        }
+      }}
+    >
+      {isExpanded ? (
+        <div style={{ width: '100%' }}>
+          <div style={{
+            fontSize: '14px',
+            fontWeight: '600',
+            color: '#6b7280',
+            marginBottom: '12px'
+          }}>
+            {instruction.paragraphId}문단 생성계획
+          </div>
+          <div style={{
+            fontSize: '15px',
+            color: '#374151',
+            lineHeight: '1.7',
+            wordBreak: 'keep-all'
+          }}>
+            {instruction.summary || '요약 정보가 없습니다.'}
+          </div>
+        </div>
+      ) : (
+        <div style={{
+          fontSize: '16px',
+          fontWeight: '600',
+          color: '#111827'
+        }}>
+          {instruction.paragraphId}문단 생성계획
+        </div>
+      )}
+    </div>
+  );
+};
+
+// 🔥 v5.5: Master Instructions 요약 섹션 컴포넌트
+const MasterInstructionsSummary = ({ paragraphInstructions }) => {
+  return (
+    <div
+      className="section-card"
+      style={{
+        background: '#ffffff',
+        border: '1px solid #e5e7eb',
+        borderRadius: '12px',
+        padding: '24px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+      }}
+    >
+      <h3 style={{
+        marginBottom: '20px',
+        fontSize: '18px',
+        fontWeight: '700',
+        color: '#111827'
+      }}>
+        📋 문단별 생성계획
+      </h3>
+
+      {paragraphInstructions.map((inst, idx) => (
+        <ParagraphPlanCard
+          key={idx}
+          instruction={inst}
+          index={idx}
+        />
+      ))}
+    </div>
+  );
+};
+
 const renderNewPlanStructure = (plan) => {
-  console.log(`[${new Date().toISOString()}] Rendering enhanced plan structure with episode utilization v4.5 (Master Instructions):`, plan);
-  
-  // 🔥 Master Instructions 구조 체크 (v4.5)
-  const isMasterInstructions = plan?.version === '4.5-master-instructions' || plan?.paragraphInstructions;
-  
+  console.log(
+    `[${new Date().toISOString()}] Rendering enhanced plan structure with episode utilization v5.5 (Summary):`,
+    plan
+  );
+
+  // 🔥 공통 흰색 카드 스타일 (컬러 제거용)
+  const whiteCardStyle = {
+    background: '#ffffff',
+    border: '1px solid #e5e7eb',
+    borderRadius: '12px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+  };
+
+  // 🔥 Master Instructions 구조 체크 (v4.5+)
+  const isMasterInstructions =
+    plan?.version?.includes('5.') ||
+    plan?.version === '4.5-master-instructions' ||
+    plan?.paragraphInstructions;
+
   // Topic-Enforced 구조 체크 (안전한 접근)
   const isTopicEnforced = plan?.metadata?.features?.topicEnforced || false;
   const questionTopic = plan?.metadata?.questionTopic || '';
   const topicIncludedInCore = plan?.metadata?.topicIncludedInCore || false;
-  
+
   // 🔥 NEW: 에피소드 활용 시스템 체크
   const hasEpisodeStrategy = plan?.metadata?.features?.episodeUtilizationStrategy || false;
   const hasSessionMemory = plan?.metadata?.features?.sessionMemorySystem || false;
   const sessionId = plan?.metadata?.sessionId || plan?.sessionId || '';
-  
+
   // 🔥 NEW v4.2: 수치 데이터 + 회사 연결성 시스템 체크
   const hasQuantitativeData = plan?.metadata?.features?.quantitativeDataAnalysis || false;
   const hasCompanyConnection = plan?.metadata?.features?.companyConnectionStrategy || false;
   const hasNaturalValidation = plan?.metadata?.features?.naturalConnectionValidation || false;
-  
+
   // Topic 상태 계산 함수
   const getTopicStatus = () => {
     if (topicIncludedInCore) {
-      return { 
-        status: 'success', 
+      return {
+        status: 'success',
         text: '성공적으로 포함됨',
         color: '#22c55e',
         bgColor: 'rgba(34, 197, 94, 0.1)',
@@ -1953,16 +2068,16 @@ const renderNewPlanStructure = (plan) => {
       };
     }
     if (questionTopic && !topicIncludedInCore) {
-      return { 
-        status: 'warning', 
+      return {
+        status: 'warning',
         text: '자동 보정 예정',
         color: '#f59e0b',
         bgColor: 'rgba(245, 158, 11, 0.1)',
         icon: '⚠️'
       };
     }
-    return { 
-      status: 'info', 
+    return {
+      status: 'info',
       text: 'Topic 분석 불가',
       color: '#6b7280',
       bgColor: 'rgba(107, 114, 128, 0.1)',
@@ -1971,276 +2086,158 @@ const renderNewPlanStructure = (plan) => {
   };
 
   const topicStatus = getTopicStatus();
-  
+
   return (
     <>
-      {/* 🔥 NEW v4.5: Master Instructions 시스템 상태 배너 */}
+      {/* ✅ 컬러 제거: v5.5 간소화된 시스템 상태 배너 (화이트 카드) */}
       {isMasterInstructions && (
-        <div className="section-card" style={{ 
-          background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-          color: 'white',
-          borderRadius: '12px',
-          marginBottom: '20px'
-        }}>
-          <h3 style={{ color: 'white', marginBottom: '15px' }}>
-            <span style={{ fontSize: '24px', marginRight: '8px' }}>🎯</span>
-            Master Instructions System v4.5
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '18px', marginBottom: '5px' }}>✅</div>
-              <div style={{ fontSize: '12px', opacity: 0.9 }}>120개 분석 통합</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '18px', marginBottom: '5px' }}>🎯</div>
-              <div style={{ fontSize: '12px', opacity: 0.9 }}>문단별 완전 지침</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '18px', marginBottom: '5px' }}>⚡</div>
-              <div style={{ fontSize: '12px', opacity: 0.9 }}>GPT-4.1 생성</div>
-            </div>
+        <div
+          className="section-card"
+          style={{
+            ...whiteCardStyle,
+            marginBottom: '20px',
+            padding: '16px 20px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h3 style={{ color: '#111827', margin: 0, fontSize: '16px', fontWeight: 700 }}>
+              🎯 생성계획 준비 완료
+            </h3>
+            <span
+              style={{
+                fontSize: '12px',
+                background: '#f3f4f6',
+                color: '#374151',
+                padding: '4px 10px',
+                borderRadius: '12px'
+              }}
+            >
+              v{plan?.version || '5.5'}
+            </span>
           </div>
-          {sessionId && (
-            <div style={{ 
-              marginTop: '10px', 
-              padding: '8px 12px', 
-              background: 'rgba(255,255,255,0.2)', 
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontFamily: 'monospace'
-            }}>
-              세션 ID: {sessionId} | v4.5 Master Instructions (GPT-4.1)
-            </div>
-          )}
         </div>
       )}
 
-      {/* 🔥 v4.2: 시스템 상태 배너 (기존 유지) */}
+      {/* 🔥 v5.5: Master Instructions 문단별 요약 (새로운 UI) */}
+      {isMasterInstructions && plan?.paragraphInstructions && Array.isArray(plan.paragraphInstructions) && (
+        <MasterInstructionsSummary paragraphInstructions={plan.paragraphInstructions} />
+      )}
+
+      {/* ✅ 컬러 제거: v4.2 시스템 상태 배너 (화이트 카드) */}
       {!isMasterInstructions && (
-        <div className="section-card" style={{ 
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
-          borderRadius: '12px',
-          marginBottom: '20px'
-        }}>
-          <h3 style={{ color: 'white', marginBottom: '15px' }}>
-            <span style={{ fontSize: '24px', marginRight: '8px' }}>🚀</span>
+        <div className="section-card" style={{ ...whiteCardStyle, marginBottom: '20px', padding: '20px' }}>
+          <h3 style={{ color: '#111827', marginBottom: '15px' }}>
+            <span style={{ fontSize: '22px', marginRight: '8px' }}>🚀</span>
             Enhanced Planning System v4.2
           </h3>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: '12px' }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '18px', marginBottom: '5px' }}>
-                {isTopicEnforced ? '✅' : '❌'}
-              </div>
-              <div style={{ fontSize: '12px', opacity: 0.9 }}>Topic 강제 포함</div>
+              <div style={{ fontSize: '18px', marginBottom: '5px' }}>{isTopicEnforced ? '✅' : '❌'}</div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>Topic 강제 포함</div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '18px', marginBottom: '5px' }}>
-                {hasEpisodeStrategy ? '🎯' : '❌'}
-              </div>
-              <div style={{ fontSize: '12px', opacity: 0.9 }}>에피소드 활용 전략</div>
+              <div style={{ fontSize: '18px', marginBottom: '5px' }}>{hasEpisodeStrategy ? '🎯' : '❌'}</div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>에피소드 활용 전략</div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '18px', marginBottom: '5px' }}>
-                {hasSessionMemory ? '🧠' : '❌'}
-              </div>
-              <div style={{ fontSize: '12px', opacity: 0.9 }}>세션 메모리</div>
+              <div style={{ fontSize: '18px', marginBottom: '5px' }}>{hasSessionMemory ? '🧠' : '❌'}</div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>세션 메모리</div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '18px', marginBottom: '5px' }}>
-                {hasQuantitativeData ? '📊' : '❌'}
-              </div>
-              <div style={{ fontSize: '12px', opacity: 0.9 }}>수치 데이터 분석</div>
+              <div style={{ fontSize: '18px', marginBottom: '5px' }}>{hasQuantitativeData ? '📊' : '❌'}</div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>수치 데이터 분석</div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '18px', marginBottom: '5px' }}>
-                {hasCompanyConnection ? '🏢' : '❌'}
-              </div>
-              <div style={{ fontSize: '12px', opacity: 0.9 }}>회사 연결성 전략</div>
+              <div style={{ fontSize: '18px', marginBottom: '5px' }}>{hasCompanyConnection ? '🏢' : '❌'}</div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>회사 연결성 전략</div>
             </div>
           </div>
+
           {sessionId && (
-            <div style={{ 
-              marginTop: '10px', 
-              padding: '8px 12px', 
-              background: 'rgba(255,255,255,0.2)', 
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontFamily: 'monospace'
-            }}>
+            <div
+              style={{
+                marginTop: '12px',
+                padding: '10px 12px',
+                background: '#f9fafb',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontFamily: 'monospace',
+                color: '#374151'
+              }}
+            >
               세션 ID: {sessionId} | v4.2 Enhanced with Quantitative Data & Company Connection Strategy
             </div>
           )}
         </div>
       )}
 
-      {/* 🔥 NEW v4.5: Master Instructions 문단별 상세 (최우선 표시) */}
-      {isMasterInstructions && plan?.paragraphInstructions && Array.isArray(plan.paragraphInstructions) && (
-        <div className="section-card" style={{
-          background: 'linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%)',
-          border: '3px solid #f59e0b'
-        }}>
-          <h3>
-            <span style={{ fontSize: '20px', marginRight: '8px' }}>📋</span>
-            Master Instructions (GPT-4.1 생성)
-            <span style={{ 
-              marginLeft: '12px', 
-              fontSize: '12px', 
-              background: '#dc2626', 
-              color: 'white',
-              padding: '4px 8px', 
-              borderRadius: '12px',
-              fontWeight: 'bold'
-            }}>
-              v4.5 완전 통합 지침
-            </span>
-          </h3>
-          
-          <div style={{ 
-            marginBottom: '15px', 
-            padding: '12px', 
-            background: 'rgba(245, 158, 11, 0.2)', 
-            borderRadius: '8px',
-            border: '1px solid rgba(245, 158, 11, 0.5)'
-          }}>
-            <h4 style={{ fontSize: '14px', marginBottom: '8px', color: '#92400e' }}>
-              🎯 Master Instructions 시스템 특징
-            </h4>
-            <div style={{ fontSize: '13px', color: '#92400e', lineHeight: '1.6' }}>
-              • 120개 이상의 분석 결과를 하나의 완전한 지침으로 통합<br/>
-              • GPT가 즉시 실행 가능한 상세한 작성 가이드<br/>
-              • 각 문단마다 1000~1500자 분량의 완벽한 지침<br/>
-              • 섹션5에서 이 지침만 GPT에게 전달
-            </div>
-          </div>
-
-          {plan.paragraphInstructions.map((inst, idx) => (
-            <div key={idx} style={{ 
-              marginBottom: '20px',
-              padding: '20px',
-              background: 'white',
-              borderRadius: '12px',
-              border: '2px solid #fbbf24',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                <h4 style={{ margin: '0', color: '#92400e', fontSize: '18px' }}>
-                  📝 문단 {inst.paragraphId} Master Instruction
-                </h4>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <span style={{ 
-                    fontSize: '11px', 
-                    background: '#f59e0b', 
-                    color: 'white', 
-                    padding: '4px 10px', 
-                    borderRadius: '12px',
-                    fontWeight: 'bold'
-                  }}>
-                    목표: {inst.targetLength}자
-                  </span>
-                  <span style={{ 
-                    fontSize: '11px', 
-                    background: '#dc2626', 
-                    color: 'white', 
-                    padding: '4px 10px', 
-                    borderRadius: '12px',
-                    fontWeight: 'bold'
-                  }}>
-                    {inst.lengthRange}
-                  </span>
-                </div>
-              </div>
-
-              <details open style={{ marginTop: '15px' }}>
-                <summary style={{ 
-                  cursor: 'pointer', 
-                  fontWeight: 'bold', 
-                  color: '#92400e',
-                  fontSize: '15px',
-                  marginBottom: '10px',
-                  padding: '10px',
-                  background: '#fef3c7',
-                  borderRadius: '6px',
-                  border: '1px solid #fbbf24'
-                }}>
-                  📋 완전한 Master Instruction 보기 ({inst.masterInstruction?.length || 0}자)
-                </summary>
-                <pre style={{ 
-                  marginTop: '10px',
-                  background: '#fffbeb',
-                  padding: '15px',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  lineHeight: '1.6',
-                  color: '#78350f',
-                  whiteSpace: 'pre-wrap',
-                  border: '1px solid #fde68a',
-                  maxHeight: '600px',
-                  overflow: 'auto'
-                }}>
-{inst.masterInstruction || '지침 없음'}
-                </pre>
-              </details>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Topic 검증 상태 배너 (기존 유지) */}
+      {/* ✅ (선택) Topic 배너도 올화이트: 배경/테두리 컬러 제거 */}
       {isTopicEnforced && questionTopic && (
-        <div className="section-card" style={{ 
-          background: topicStatus.bgColor,
-          border: `2px solid ${topicStatus.color}`,
-          borderRadius: '8px'
-        }}>
-          <h3>
-            <span style={{ fontSize: '20px', marginRight: '8px' }}>
-              {topicStatus.icon}
-            </span>
+        <div
+          className="section-card"
+          style={{
+            ...whiteCardStyle,
+            borderRadius: '12px',
+            padding: '18px'
+          }}
+        >
+          <h3 style={{ margin: 0, color: '#111827' }}>
+            <span style={{ fontSize: '20px', marginRight: '8px' }}>{topicStatus.icon}</span>
             Topic 강제 포함 시스템
           </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '8px' }}>
-            <p><strong>감지된 핵심 주제:</strong> "{questionTopic}"</p>
-            <p><strong>포함 상태:</strong> 
-              <span style={{ color: topicStatus.color, fontWeight: 'bold', marginLeft: '8px' }}>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '10px' }}>
+            <p style={{ margin: 0 }}>
+              <strong>감지된 핵심 주제:</strong> "{questionTopic}"
+            </p>
+            <p style={{ margin: 0 }}>
+              <strong>포함 상태:</strong>
+              <span style={{ color: '#374151', fontWeight: 'bold', marginLeft: '8px' }}>
                 {topicStatus.text}
               </span>
             </p>
           </div>
+
           {topicStatus.status === 'warning' && (
-            <div style={{ 
-              marginTop: '12px', 
-              padding: '8px', 
-              background: 'rgba(245, 158, 11, 0.2)', 
-              borderRadius: '4px',
-              fontSize: '14px'
-            }}>
+            <div
+              style={{
+                marginTop: '12px',
+                padding: '10px 12px',
+                background: '#f9fafb',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '14px',
+                color: '#374151'
+              }}
+            >
               자소서 생성 시 "{questionTopic}" 주제가 자동으로 포함됩니다.
             </div>
           )}
         </div>
       )}
 
-      {/* 🔥 NEW v4.2: 에피소드 활용 전략 요약 섹션 (수치 데이터 + 회사 연결성 포함) */}
+      {/* ✅ 컬러 제거: 에피소드 활용 전략 요약 섹션 (v4.2 확장) */}
       {plan?.dynamicEpisodeUtilizationSummary && Array.isArray(plan.dynamicEpisodeUtilizationSummary) && (
-        <div className="section-card" style={{ 
-          background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-          border: '2px solid #0ea5e9'
-        }}>
-          <h3>
+        <div className="section-card" style={{ ...whiteCardStyle, padding: '20px' }}>
+          <h3 style={{ marginTop: 0 }}>
             <span style={{ fontSize: '20px', marginRight: '8px' }}>🎯</span>
             완전 동적 에피소드 활용 전략 v4.2 (수치 데이터 + 회사 연결성 통합)
           </h3>
-          
-          {/* 전략 요약 */}
-          <div style={{ 
-            marginBottom: '15px', 
-            padding: '12px', 
-            background: 'rgba(14, 165, 233, 0.1)', 
-            borderRadius: '8px',
-            border: '1px solid rgba(14, 165, 233, 0.3)'
-          }}>
-            <h4 style={{ fontSize: '14px', marginBottom: '8px', color: '#0c4a6e' }}>v4.2 통합 활용 전략 개요</h4>
+
+          <div
+            style={{
+              marginBottom: '15px',
+              padding: '12px',
+              background: '#f9fafb',
+              borderRadius: '10px',
+              border: '1px solid #e5e7eb'
+            }}
+          >
+            <h4 style={{ fontSize: '14px', marginBottom: '8px', color: '#111827' }}>
+              v4.2 통합 활용 전략 개요
+            </h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px', fontSize: '13px' }}>
               <span><strong>총 전략:</strong> {plan.dynamicEpisodeUtilizationSummary.length}개</span>
               <span><strong>STAR 분산:</strong> 문단별 최적화</span>
@@ -2248,61 +2245,65 @@ const renderNewPlanStructure = (plan) => {
               <span><strong>🏢 회사 연결성:</strong> {hasCompanyConnection ? '활성화' : '기본 모드'}</span>
             </div>
           </div>
-          
-          {/* 문단별 에피소드 전략 (v4.2 확장) */}
+
           {plan.dynamicEpisodeUtilizationSummary.map((strategy, idx) => (
-            <div key={idx} style={{ 
-              marginBottom: '12px',
-              padding: '15px',
-              background: 'white',
-              borderRadius: '10px',
-              border: '1px solid #bae6fd',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-            }}>
+            <div
+              key={idx}
+              style={{
+                marginBottom: '12px',
+                padding: '15px',
+                background: '#ffffff',
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
+              }}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <h4 style={{ margin: '0', color: '#0c4a6e', fontSize: '16px' }}>
+                <h4 style={{ margin: '0', color: '#111827', fontSize: '16px' }}>
                   문단 {strategy.paragraphId} 전략
                 </h4>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <span style={{ 
-                    fontSize: '11px', 
-                    background: '#0ea5e9', 
-                    color: 'white', 
-                    padding: '3px 8px', 
+
+                {/* 뱃지는 유지(원하면 회색 통일도 가능) */}
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <span style={{
+                    fontSize: '11px',
+                    background: '#e5e7eb',
+                    color: '#111827',
+                    padding: '3px 8px',
                     borderRadius: '12px',
                     fontWeight: 'bold'
                   }}>
                     STAR: {strategy.starFocus || 'ALL'}
                   </span>
-                  <span style={{ 
-                    fontSize: '11px', 
-                    background: '#64748b', 
-                    color: 'white', 
-                    padding: '3px 8px', 
+                  <span style={{
+                    fontSize: '11px',
+                    background: '#f3f4f6',
+                    color: '#111827',
+                    padding: '3px 8px',
                     borderRadius: '12px'
                   }}>
                     {strategy.utilizationMethod || '활용방법'}
                   </span>
-                  {/* 🔥 NEW v4.2: 수치 데이터 뱃지 */}
+
                   {strategy.quantitativeDataUsage && strategy.quantitativeDataUsage !== '수치 데이터 미포함' && (
-                    <span style={{ 
-                      fontSize: '11px', 
-                      background: '#22c55e', 
-                      color: 'white', 
-                      padding: '3px 8px', 
+                    <span style={{
+                      fontSize: '11px',
+                      background: '#f3f4f6',
+                      color: '#111827',
+                      padding: '3px 8px',
                       borderRadius: '12px',
                       fontWeight: 'bold'
                     }}>
                       📊 수치포함
                     </span>
                   )}
-                  {/* 🔥 NEW v4.2: 회사 연결 뱃지 */}
+
                   {strategy.companyConnectionStrategy && strategy.companyConnectionStrategy !== '기본 회사 연결' && (
-                    <span style={{ 
-                      fontSize: '11px', 
-                      background: '#8b5cf6', 
-                      color: 'white', 
-                      padding: '3px 8px', 
+                    <span style={{
+                      fontSize: '11px',
+                      background: '#f3f4f6',
+                      color: '#111827',
+                      padding: '3px 8px',
                       borderRadius: '12px',
                       fontWeight: 'bold'
                     }}>
@@ -2311,38 +2312,39 @@ const renderNewPlanStructure = (plan) => {
                   )}
                 </div>
               </div>
-              
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '6px' }}>
                 <p><strong>주요 에피소드:</strong> {strategy.primaryEpisode || '미정'}</p>
                 <p><strong>활용 방법:</strong> {strategy.utilizationMethod || '전체활용'}</p>
-                <p><strong>예상 내용:</strong> 
-                  <span style={{ color: '#64748b', fontStyle: 'italic', marginLeft: '8px' }}>
+                <p>
+                  <strong>예상 내용:</strong>
+                  <span style={{ color: '#6b7280', fontStyle: 'italic', marginLeft: '8px' }}>
                     {strategy.expectedContent || '구체적 경험과 성과 중심'}
                   </span>
                 </p>
-                
-                {/* 🔥 NEW v4.2: 수치 데이터 활용 정보 */}
+
                 {strategy.quantitativeDataUsage && strategy.quantitativeDataUsage !== '수치 데이터 미포함' && (
-                  <p><strong>🔢 수치 데이터 활용:</strong> 
-                    <span style={{ color: '#059669', fontWeight: 'bold', marginLeft: '8px' }}>
+                  <p>
+                    <strong>🔢 수치 데이터 활용:</strong>
+                    <span style={{ color: '#374151', fontWeight: 'bold', marginLeft: '8px' }}>
                       {strategy.quantitativeDataUsage}
                     </span>
                   </p>
                 )}
-                
-                {/* 🔥 NEW v4.2: 회사 연결성 정보 */}
+
                 {strategy.companyConnectionStrategy && strategy.companyConnectionStrategy !== '기본 회사 연결' && (
-                  <p><strong>🏢 회사 연결 전략:</strong> 
-                    <span style={{ color: '#7c3aed', fontWeight: 'bold', marginLeft: '8px' }}>
+                  <p>
+                    <strong>🏢 회사 연결 전략:</strong>
+                    <span style={{ color: '#374151', fontWeight: 'bold', marginLeft: '8px' }}>
                       {strategy.companyConnectionStrategy}
                     </span>
                   </p>
                 )}
-                
-                {/* 🔥 NEW v4.2: 자연스러운 연결 검증 */}
+
                 {strategy.naturalConnectionValidation && strategy.naturalConnectionValidation !== '검증 없음' && (
-                  <p><strong>✅ 연결 자연스러움:</strong> 
-                    <span style={{ color: '#0891b2', fontStyle: 'italic', marginLeft: '8px' }}>
+                  <p>
+                    <strong>✅ 연결 자연스러움:</strong>
+                    <span style={{ color: '#6b7280', fontStyle: 'italic', marginLeft: '8px' }}>
                       {strategy.naturalConnectionValidation}
                     </span>
                   </p>
@@ -2353,75 +2355,77 @@ const renderNewPlanStructure = (plan) => {
         </div>
       )}
 
-      {/* 🔥 FALLBACK: 기존 에피소드 활용 전략 요약 섹션 (하위 호환성) */}
+      {/* ✅ 컬러 제거: 폴백(구버전) 에피소드 활용 전략 섹션 */}
       {!plan?.dynamicEpisodeUtilizationSummary && plan?.episodeUtilizationSummary && Array.isArray(plan.episodeUtilizationSummary) && (
-        <div className="section-card" style={{ 
-          background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-          border: '2px solid #0ea5e9'
-        }}>
-          <h3>
+        <div className="section-card" style={{ ...whiteCardStyle, padding: '20px' }}>
+          <h3 style={{ marginTop: 0 }}>
             <span style={{ fontSize: '20px', marginRight: '8px' }}>🎯</span>
             에피소드 활용 전략 (STAR 방법론)
           </h3>
-          
-          {/* 전략 요약 */}
-          <div style={{ 
-            marginBottom: '15px', 
-            padding: '12px', 
-            background: 'rgba(14, 165, 233, 0.1)', 
-            borderRadius: '8px',
-            border: '1px solid rgba(14, 165, 233, 0.3)'
-          }}>
-            <h4 style={{ fontSize: '14px', marginBottom: '8px', color: '#0c4a6e' }}>활용 전략 개요</h4>
+
+          <div
+            style={{
+              marginBottom: '15px',
+              padding: '12px',
+              background: '#f9fafb',
+              borderRadius: '10px',
+              border: '1px solid #e5e7eb'
+            }}
+          >
+            <h4 style={{ fontSize: '14px', marginBottom: '8px', color: '#111827' }}>활용 전략 개요</h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', fontSize: '13px' }}>
               <span><strong>총 전략:</strong> {plan.episodeUtilizationSummary.length}개</span>
               <span><strong>STAR 분산:</strong> 문단별 최적화</span>
               <span><strong>중복 방지:</strong> 활성화됨</span>
             </div>
           </div>
-          
-          {/* 문단별 에피소드 전략 */}
+
           {plan.episodeUtilizationSummary.map((strategy, idx) => (
-            <div key={idx} style={{ 
-              marginBottom: '12px',
-              padding: '15px',
-              background: 'white',
-              borderRadius: '10px',
-              border: '1px solid #bae6fd',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-            }}>
+            <div
+              key={idx}
+              style={{
+                marginBottom: '12px',
+                padding: '15px',
+                background: '#ffffff',
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
+              }}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <h4 style={{ margin: '0', color: '#0c4a6e', fontSize: '16px' }}>
+                <h4 style={{ margin: '0', color: '#111827', fontSize: '16px' }}>
                   문단 {strategy.paragraphId} 전략
                 </h4>
+
                 <div style={{ display: 'flex', gap: '6px' }}>
-                  <span style={{ 
-                    fontSize: '11px', 
-                    background: '#0ea5e9', 
-                    color: 'white', 
-                    padding: '3px 8px', 
+                  <span style={{
+                    fontSize: '11px',
+                    background: '#e5e7eb',
+                    color: '#111827',
+                    padding: '3px 8px',
                     borderRadius: '12px',
                     fontWeight: 'bold'
                   }}>
                     STAR: {strategy.starFocus || 'ALL'}
                   </span>
-                  <span style={{ 
-                    fontSize: '11px', 
-                    background: '#64748b', 
-                    color: 'white', 
-                    padding: '3px 8px', 
+                  <span style={{
+                    fontSize: '11px',
+                    background: '#f3f4f6',
+                    color: '#111827',
+                    padding: '3px 8px',
                     borderRadius: '12px'
                   }}>
                     {strategy.utilizationMethod || '활용방법'}
                   </span>
                 </div>
               </div>
-              
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '6px' }}>
                 <p><strong>주요 에피소드:</strong> {strategy.primaryEpisode || '미정'}</p>
                 <p><strong>활용 방법:</strong> {strategy.utilizationMethod || '전체활용'}</p>
-                <p><strong>예상 내용:</strong> 
-                  <span style={{ color: '#64748b', fontStyle: 'italic', marginLeft: '8px' }}>
+                <p>
+                  <strong>예상 내용:</strong>
+                  <span style={{ color: '#6b7280', fontStyle: 'italic', marginLeft: '8px' }}>
                     {strategy.expectedContent || '구체적 경험과 성과 중심'}
                   </span>
                 </p>
@@ -2431,15 +2435,15 @@ const renderNewPlanStructure = (plan) => {
         </div>
       )}
 
-      {/* Topic 전략 섹션 (안전한 접근으로 개선) */}
+      {/* Topic 전략 섹션 (유지) */}
       {plan?.topicStrategy && (
         <div className="section-card">
           <h3>
-            <GlassIcon type="strategy" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }}/>
+            <GlassIcon type="strategy" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
             Topic-Enforced 전략
           </h3>
           <p><strong>핵심 메시지:</strong> {safeRender(plan.topicStrategy.coreMessage, '정보 없음')}</p>
-          
+
           {plan.topicStrategy.supportingStrategy && (
             <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
               <h4 style={{ fontSize: '14px', marginBottom: '8px', color: '#374151' }}>지원 전략</h4>
@@ -2448,14 +2452,14 @@ const renderNewPlanStructure = (plan) => {
               <p><strong>회사 연결점:</strong> {safeRender(plan.topicStrategy.supportingStrategy.connectionToCompany, '정보 없음')}</p>
             </div>
           )}
-          
+
           {plan.topicStrategy.episodeUtilization && (
             <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
               <h4 style={{ fontSize: '14px', marginBottom: '8px', color: '#374151' }}>에피소드 활용 계획</h4>
               <p><strong>주 활용 에피소드:</strong> {safeRender(plan.topicStrategy.episodeUtilization.primaryEpisode, '정보 없음')}</p>
               <p><strong>보조 에피소드:</strong> {
-                Array.isArray(plan.topicStrategy.episodeUtilization.supportingEpisodes) 
-                  ? plan.topicStrategy.episodeUtilization.supportingEpisodes.join(', ') 
+                Array.isArray(plan.topicStrategy.episodeUtilization.supportingEpisodes)
+                  ? plan.topicStrategy.episodeUtilization.supportingEpisodes.join(', ')
                   : '정보 없음'
               }</p>
               <p><strong>활용 방법:</strong> {safeRender(plan.topicStrategy.episodeUtilization.utilizationMethod, '정보 없음')}</p>
@@ -2464,15 +2468,14 @@ const renderNewPlanStructure = (plan) => {
         </div>
       )}
 
-      {/* 개인 프로파일 분석 섹션 (안전한 접근으로 개선) */}
+      {/* 개인 프로파일 분석 섹션 (유지) */}
       {plan?.personalProfile && (
         <div className="section-card">
           <h3>
-            <GlassIcon type="user" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }}/>
+            <GlassIcon type="user" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
             개인 캐릭터 프로파일
           </h3>
-          
-          {/* characterProfile 섹션 */}
+
           {plan.personalProfile.characterProfile && (
             <div>
               <h4 style={{ fontSize: '14px', marginBottom: '8px', color: '#374151' }}>핵심 캐릭터성</h4>
@@ -2482,8 +2485,7 @@ const renderNewPlanStructure = (plan) => {
               <p><strong>개인 브랜딩:</strong> {safeRender(plan.personalProfile.characterProfile.personalBranding, '분석 중')}</p>
             </div>
           )}
-          
-          {/* applicationStrategy 섹션 */}
+
           {plan.personalProfile.applicationStrategy && (
             <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
               <h4 style={{ fontSize: '14px', marginBottom: '8px', color: '#374151' }}>자소서 적용 전략</h4>
@@ -2492,37 +2494,26 @@ const renderNewPlanStructure = (plan) => {
               <p><strong>차별화 포인트:</strong> {safeRender(plan.personalProfile.applicationStrategy.differentiationPoints, '개인적 특성')}</p>
             </div>
           )}
-          
-          {/* 🔥 NEW: 데이터 품질 평가 */}
+
           {plan.personalProfile.dataQualityAssessment && (
-            <div style={{ 
-              marginTop: '12px', 
-              paddingTop: '12px', 
-              borderTop: '1px solid #e5e7eb',
-              background: '#f8fafc',
-              padding: '10px',
-              borderRadius: '6px'
-            }}>
+            <div
+              style={{
+                marginTop: '12px',
+                paddingTop: '12px',
+                borderTop: '1px solid #e5e7eb',
+                background: '#f8fafc',
+                padding: '10px',
+                borderRadius: '6px'
+              }}
+            >
               <h4 style={{ fontSize: '14px', marginBottom: '8px', color: '#374151' }}>분석 품질 평가</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', fontSize: '13px' }}>
-                <span><strong>데이터 풍부함:</strong> 
-                  <span style={{ 
-                    marginLeft: '4px',
-                    color: plan.personalProfile.dataQualityAssessment.resumeDataRichness === '상' ? '#059669' : 
-                           plan.personalProfile.dataQualityAssessment.resumeDataRichness === '중' ? '#d97706' : '#dc2626'
-                  }}>
-                    {plan.personalProfile.dataQualityAssessment.resumeDataRichness || '중'}
-                  </span>
-                </span>
-                <span><strong>분석 신뢰도:</strong> 
-                  <span style={{ 
-                    marginLeft: '4px',
-                    color: plan.personalProfile.dataQualityAssessment.analysisConfidence === '상' ? '#059669' : 
-                           plan.personalProfile.dataQualityAssessment.analysisConfidence === '중' ? '#d97706' : '#dc2626'
-                  }}>
-                    {plan.personalProfile.dataQualityAssessment.analysisConfidence || '중'}
-                  </span>
-                </span>
+                <span><strong>데이터 풍부함:</strong> <span style={{ marginLeft: '4px', color: '#374151' }}>
+                  {plan.personalProfile.dataQualityAssessment.resumeDataRichness || '중'}
+                </span></span>
+                <span><strong>분석 신뢰도:</strong> <span style={{ marginLeft: '4px', color: '#374151' }}>
+                  {plan.personalProfile.dataQualityAssessment.analysisConfidence || '중'}
+                </span></span>
                 <span><strong>데이터 소스:</strong> {safeRender(plan.personalProfile.dataQualityAssessment.dataSource, '구조화된 데이터')}</span>
               </div>
               {plan.personalProfile.dataQualityAssessment.dataLength && (
@@ -2535,86 +2526,98 @@ const renderNewPlanStructure = (plan) => {
         </div>
       )}
 
-      {/* 구조 정보 섹션 (Perplexity 강조 개선) */}
+      {/* 구조 정보 섹션 (유지) */}
       {plan?.structure && (
         <div className="section-card">
           <h3>
-            <GlassIcon type="document" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }}/>
+            <GlassIcon type="document" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
             최적화된 자소서 구조
             {plan.structure.source === 'perplexity' ? (
-              <span style={{ 
-                marginLeft: '12px', 
-                fontSize: '12px', 
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
-                color: 'white',
-                padding: '4px 8px', 
-                borderRadius: '12px',
-                fontWeight: 'bold'
-              }}>
+              <span
+                style={{
+                  marginLeft: '12px',
+                  fontSize: '12px',
+                  background: '#f3f4f6',
+                  color: '#374151',
+                  padding: '4px 8px',
+                  borderRadius: '12px',
+                  fontWeight: 'bold'
+                }}
+              >
                 🔍 실시간 AI 검색
               </span>
             ) : plan.structure.source === 'master-instructions-v4.5' ? (
-              <span style={{ 
-                marginLeft: '12px', 
-                fontSize: '12px', 
-                background: '#f59e0b', 
-                color: 'white',
-                padding: '4px 8px', 
-                borderRadius: '12px',
-                fontWeight: 'bold'
-              }}>
+              <span
+                style={{
+                  marginLeft: '12px',
+                  fontSize: '12px',
+                  background: '#f3f4f6',
+                  color: '#374151',
+                  padding: '4px 8px',
+                  borderRadius: '12px',
+                  fontWeight: 'bold'
+                }}
+              >
                 🎯 Master Instructions
               </span>
             ) : (
-              <span style={{ 
-                marginLeft: '12px', 
-                fontSize: '12px', 
-                background: '#f3f4f6', 
-                color: '#374151',
-                padding: '4px 8px', 
-                borderRadius: '12px' 
-              }}>
+              <span
+                style={{
+                  marginLeft: '12px',
+                  fontSize: '12px',
+                  background: '#f3f4f6',
+                  color: '#374151',
+                  padding: '4px 8px',
+                  borderRadius: '12px'
+                }}
+              >
                 📋 기본 템플릿
               </span>
             )}
           </h3>
-          
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
             <p><strong>문단 수:</strong> {plan.structure.optimalParagraphCount || 3}개</p>
             <p><strong>구조 출처:</strong> {
-              plan.structure.source === 'perplexity' ? 'Perplexity AI' : 
-              plan.structure.source === 'master-instructions-v4.5' ? 'Master Instructions (GPT-4.1)' :
-              '내장 템플릿'
+              plan.structure.source === 'perplexity' ? 'Perplexity AI' :
+                plan.structure.source === 'master-instructions-v4.5' ? 'Master Instructions (GPT-4.1)' :
+                  '내장 템플릿'
             }</p>
           </div>
-          
+
           <p><strong>구조 전략:</strong> {plan.structure.flowStrategy || plan.structure.rationale || '표준 3단 구조'}</p>
-          
-          {/* 문단별 역할 (개선된 레이아웃) */}
+
           {plan.structure.paragraphRoles && Array.isArray(plan.structure.paragraphRoles) && (
             <div style={{ marginTop: '15px' }}>
               <h4 style={{ fontSize: '14px', marginBottom: '10px', color: '#374151' }}>문단별 역할 및 비중</h4>
               {plan.structure.paragraphRoles.map((role, idx) => (
-                <div key={idx} style={{ 
-                  marginBottom: '10px', 
-                  padding: '12px', 
-                  background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', 
-                  borderRadius: '8px',
-                  border: '1px solid #e2e8f0'
-                }}>
+                <div
+                  key={idx}
+                  style={{
+                    marginBottom: '10px',
+                    padding: '12px',
+                    background: '#f9fafb',
+                    borderRadius: '10px',
+                    border: '1px solid #e5e7eb'
+                  }}
+                >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <strong style={{ color: '#1e293b' }}>문단 {role.paragraphId}: {role.role}</strong>
-                    <span style={{ 
-                      fontSize: '12px', 
-                      background: '#3b82f6', 
-                      color: 'white', 
-                      padding: '2px 8px', 
-                      borderRadius: '10px' 
-                    }}>
+                    <strong style={{ color: '#111827' }}>
+                      문단 {role.paragraphId}: {role.role}
+                    </strong>
+                    <span
+                      style={{
+                        fontSize: '12px',
+                        background: '#f3f4f6',
+                        color: '#374151',
+                        padding: '2px 8px',
+                        borderRadius: '10px'
+                      }}
+                    >
                       {role.approximateLength || 300}자
                     </span>
                   </div>
-                  <p style={{ margin: '6px 0 0 0', color: '#64748b', fontSize: '14px' }}>
+                  <p style={{ margin: '6px 0 0 0', color: '#6b7280', fontSize: '14px' }}>
                     <strong>초점:</strong> {role.focusArea || '내용 구성'}
                   </p>
                 </div>
@@ -2624,312 +2627,37 @@ const renderNewPlanStructure = (plan) => {
         </div>
       )}
 
-      {/* 🔥 ENHANCED v4.5: 문단별 상세 계획 섹션 (Master Instructions 우선) */}
-      {!isMasterInstructions && plan?.instructions && Array.isArray(plan.instructions) && plan.instructions.length > 0 && (
-        <div className="section-card">
-          <h3>
-            <GlassIcon type="document" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }}/>
-            문단별 상세 실행 계획 v4.2
-            <span style={{ 
-              marginLeft: '12px', 
-              fontSize: '12px', 
-              background: hasEpisodeStrategy ? '#22c55e' : '#6b7280', 
-              color: 'white',
-              padding: '4px 8px', 
-              borderRadius: '12px',
-              fontWeight: 'bold'
-            }}>
-              {hasEpisodeStrategy ? '🎯 에피소드 전략 포함' : '📋 기본 계획'}
-            </span>
-            {(hasQuantitativeData || hasCompanyConnection) && (
-              <span style={{ 
-                marginLeft: '8px', 
-                fontSize: '12px', 
-                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', 
-                color: 'white',
-                padding: '4px 8px', 
-                borderRadius: '12px',
-                fontWeight: 'bold'
-              }}>
-                {hasQuantitativeData && hasCompanyConnection ? '📊🏢 수치+회사연결' : 
-                 hasQuantitativeData ? '📊 수치데이터' : '🏢 회사연결'}
-              </span>
-            )}
-          </h3>
-          {plan.instructions.map((inst) => (
-            <div key={inst.paragraphId} style={{ 
-              marginBottom: '20px', 
-              padding: '20px', 
-              backgroundColor: '#fafbfc', 
-              borderRadius: '12px',
-              border: '1px solid #e1e5e9',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                <h4 style={{ margin: '0', color: '#2d3748', fontSize: '18px' }}>
-                  문단 {inst.paragraphId}: {inst.role}
-                </h4>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  {inst.paragraphId === 1 && questionTopic && (
-                    <span style={{ 
-                      fontSize: '11px', 
-                      background: '#ef4444', 
-                      color: 'white', 
-                      padding: '3px 8px', 
-                      borderRadius: '8px',
-                      fontWeight: 'bold'
-                    }}>
-                      Topic 필수
-                    </span>
-                  )}
-                  {inst.episodeUtilization && (
-                    <span style={{ 
-                      fontSize: '11px', 
-                      background: '#8b5cf6', 
-                      color: 'white', 
-                      padding: '3px 8px', 
-                      borderRadius: '8px',
-                      fontWeight: 'bold'
-                    }}>
-                      에피소드 전략
-                    </span>
-                  )}
-                  {/* 🔥 NEW v4.2: 수치 데이터 뱃지 */}
-                  {inst.quantitativeDataUsage && inst.quantitativeDataUsage !== '수치 데이터 미포함' && (
-                    <span style={{ 
-                      fontSize: '11px', 
-                      background: '#22c55e', 
-                      color: 'white', 
-                      padding: '3px 8px', 
-                      borderRadius: '8px',
-                      fontWeight: 'bold'
-                    }}>
-                      📊 수치포함
-                    </span>
-                  )}
-                  {/* 🔥 NEW v4.2: 회사 연결성 뱃지 */}
-                  {inst.companyConnectionStrategy && inst.companyConnectionStrategy !== '기본 회사 연결' && (
-                    <span style={{ 
-                      fontSize: '11px', 
-                      background: '#0891b2', 
-                      color: 'white', 
-                      padding: '3px 8px', 
-                      borderRadius: '8px',
-                      fontWeight: 'bold'
-                    }}>
-                      🏢 회사연결
-                    </span>
-                  )}
-                  <span style={{ 
-                    fontSize: '11px', 
-                    background: '#6b7280', 
-                    color: 'white', 
-                    padding: '3px 8px', 
-                    borderRadius: '8px' 
-                  }}>
-                    {inst.targetLength || 300}자
-                  </span>
-                </div>
-              </div>
-              
-              {/* 기본 계획 정보 */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px', marginBottom: '15px' }}>
-                <p><strong>핵심 메시지:</strong> {inst.mainMessage || inst.focusArea || '내용 구성'}</p>
-                <p><strong>초점 영역:</strong> {inst.focusArea || '해당 문단 역할'}</p>
-                <p><strong>차별화 포인트:</strong> {inst.differentiationPoint || '개인적 특성 강조'}</p>
-                <p><strong>연결 전략:</strong> {inst.connectionStrategy || '자연스러운 흐름'}</p>
-                {inst.paragraphId === 1 && questionTopic && (
-                  <p style={{ color: '#ef4444', fontWeight: 'bold' }}>
-                    <strong>Topic 처리:</strong> "{questionTopic}" 반드시 포함
-                  </p>
-                )}
-                
-                {/* 🔥 NEW v4.2: 수치 데이터 활용 정보 */}
-                {inst.quantitativeDataUsage && inst.quantitativeDataUsage !== '수치 데이터 미포함' && (
-                  <p style={{ color: '#059669', fontWeight: 'bold' }}>
-                    <strong>📊 수치 데이터 활용:</strong> {inst.quantitativeDataUsage}
-                  </p>
-                )}
-                
-                {/* 🔥 NEW v4.2: 회사 연결성 정보 */}
-                {inst.companyConnectionStrategy && inst.companyConnectionStrategy !== '기본 회사 연결' && (
-                  <p style={{ color: '#0891b2', fontWeight: 'bold' }}>
-                    <strong>🏢 회사 연결 전략:</strong> {inst.companyConnectionStrategy}
-                  </p>
-                )}
-              </div>
-              
-              {/* 🔥 NEW: 에피소드 활용 상세 정보 */}
-              {inst.episodeUtilization && (
-                <div style={{ 
-                  marginTop: '15px', 
-                  padding: '15px', 
-                  background: '#f0f9ff',
-                  borderRadius: '8px',
-                  border: '1px solid #bae6fd'
-                }}>
-                  <h5 style={{ 
-                    margin: '0 0 10px 0', 
-                    color: '#0c4a6e', 
-                    fontSize: '14px',
-                    fontWeight: 'bold'
-                  }}>
-                    🎯 에피소드 활용 전략
-                  </h5>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '10px' }}>
-                    <p><strong>주요 에피소드:</strong> {inst.episodeUtilization.primaryEpisode || '미정'}</p>
-                    <p><strong>활용 방법:</strong> {inst.episodeUtilization.utilizationMethod || '전체활용'}</p>
-                    <p><strong>STAR 초점:</strong> 
-                      <span style={{ 
-                        marginLeft: '8px',
-                        background: '#0ea5e9',
-                        color: 'white',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        fontWeight: 'bold'
-                      }}>
-                        {inst.episodeUtilization.starFocus || 'ALL'}
-                      </span>
-                    </p>
-                    <p><strong>통합 스타일:</strong> {inst.episodeUtilization.integrationStyle || '자연스러운 통합'}</p>
-                  </div>
-                  
-                  <p><strong>예상 내용:</strong> 
-                    <span style={{ color: '#64748b', fontStyle: 'italic', marginLeft: '8px' }}>
-                      {inst.episodeUtilization.expectedContent || '구체적 경험과 성과 중심'}
-                    </span>
-                  </p>
-                  
-                  {/* 🔥 NEW v4.2: 수치 데이터 통합 정보 */}
-                  {inst.quantitativeDataIntegration && inst.quantitativeDataIntegration !== '수치 데이터 미포함' && (
-                    <p style={{ marginTop: '8px' }}><strong>📊 수치 데이터 통합:</strong> 
-                      <span style={{ color: '#059669', fontStyle: 'italic', marginLeft: '8px' }}>
-                        {inst.quantitativeDataIntegration}
-                      </span>
-                    </p>
-                  )}
-                  
-                  {/* 🔥 NEW v4.2: 회사 연결성 통합 정보 */}
-                  {inst.companyConnectionIntegration && inst.companyConnectionIntegration !== '기본 회사 연결' && (
-                    <p style={{ marginTop: '8px' }}><strong>🏢 회사 연결성 통합:</strong> 
-                      <span style={{ color: '#0891b2', fontStyle: 'italic', marginLeft: '8px' }}>
-                        {inst.companyConnectionIntegration}
-                      </span>
-                    </p>
-                  )}
-                  
-                  {/* 🔥 NEW v4.2: 회피 지침 */}
-                  {inst.avoidConnectionGuidelines && inst.avoidConnectionGuidelines.length > 0 && (
-                    <div style={{ marginTop: '10px', fontSize: '12px' }}>
-                      <strong>⚠️ 연결 회피 지침:</strong>
-                      <ul style={{ marginTop: '4px', paddingLeft: '20px', color: '#dc2626' }}>
-                        {inst.avoidConnectionGuidelines.map((guideline, idx) => (
-                          <li key={idx}>{guideline}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  
-                  {/* 🔥 NEW: 글자수 배분 정보 */}
-                  {inst.episodeUtilization.lengthAllocation && (
-                    <div style={{ marginTop: '10px', fontSize: '13px' }}>
-                      <strong>글자수 배분:</strong>
-                      <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
-                        <span>에피소드: {inst.episodeUtilization.lengthAllocation.episodeContent || '60%'}</span>
-                        <span>회사연결: {inst.episodeUtilization.lengthAllocation.companyConnection || '25%'}</span>
-                        <span>개인성찰: {inst.episodeUtilization.lengthAllocation.personalInsight || '15%'}</span>
-                        {/* 🔥 NEW v4.2: 수치 데이터 비중 */}
-                        {inst.episodeUtilization.lengthAllocation.quantitativeData && inst.episodeUtilization.lengthAllocation.quantitativeData !== '0%' && (
-                          <span style={{ color: '#059669', fontWeight: 'bold' }}>수치데이터: {inst.episodeUtilization.lengthAllocation.quantitativeData}</span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* 🔥 NEW: 활용할 구체적 요소들 */}
-                  {inst.episodeUtilization.specificElements && (
-                    <div style={{ marginTop: '10px', fontSize: '12px' }}>
-                      <strong>활용 요소:</strong>
-                      <div style={{ marginTop: '4px', color: '#64748b' }}>
-                        {inst.episodeUtilization.specificElements.situations?.length > 0 && (
-                          <span>상황: {inst.episodeUtilization.specificElements.situations.slice(0, 2).join(', ')} </span>
-                        )}
-                        {inst.episodeUtilization.specificElements.actions?.length > 0 && (
-                          <span>행동: {inst.episodeUtilization.specificElements.actions.slice(0, 2).join(', ')} </span>
-                        )}
-                        {inst.episodeUtilization.specificElements.results?.length > 0 && (
-                          <span>결과: {inst.episodeUtilization.specificElements.results.slice(0, 2).join(', ')}</span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* 🔥 NEW v4.2: 상세 지침 표시 */}
-                  {inst.detailedEpisodeInstructions && inst.detailedEpisodeInstructions.dynamicInstructions && (
-                    <details style={{ marginTop: '12px' }}>
-                      <summary style={{ 
-                        cursor: 'pointer', 
-                        fontWeight: 'bold', 
-                        color: '#0c4a6e',
-                        fontSize: '13px'
-                      }}>
-                        📋 상세 작성 지침 보기 (v4.2)
-                      </summary>
-                      <pre style={{ 
-                        marginTop: '8px',
-                        background: '#f8fafc',
-                        padding: '10px',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        lineHeight: '1.4',
-                        color: '#374151',
-                        whiteSpace: 'pre-wrap',
-                        border: '1px solid #e2e8f0'
-                      }}>
-                        {inst.detailedEpisodeInstructions.dynamicInstructions}
-                      </pre>
-                    </details>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* 회사 정보 섹션 (🔧 객체 안전 렌더링으로 수정) */}
+      {/* 회사 정보 섹션 (유지) */}
       <div className="section-card">
         <h3>
-          <GlassIcon type="company" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }}/>
+          <GlassIcon type="company" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
           타겟 회사 정보
         </h3>
-        
-        {/* 기본 정보 */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: '1fr 1fr', 
-          gap: '12px', 
-          marginBottom: '15px',
-          padding: '12px',
-          background: '#f8f9fa',
-          borderRadius: '6px'
-        }}>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '12px',
+            marginBottom: '15px',
+            padding: '12px',
+            background: '#f8f9fa',
+            borderRadius: '6px'
+          }}
+        >
           <p><strong>회사명:</strong> {state?.companyInfo?.company || '정보 없음'}</p>
           <p><strong>직무명:</strong> {state?.companyInfo?.jobTitle || '정보 없음'}</p>
           <p><strong>최대 글자수:</strong> {state?.companyInfo?.wordLimit || 1000}자</p>
           <p><strong>질문 유형:</strong> {questionTopic || '일반'}</p>
         </div>
-        
+
         <p style={{ marginBottom: '15px' }}>
-          <strong>자소서 질문:</strong> 
+          <strong>자소서 질문:</strong>
           <span style={{ marginLeft: '8px', fontStyle: 'italic', color: '#4a5568' }}>
             {state?.companyInfo?.questions || '정보 없음'}
           </span>
         </p>
-        
-        {/* 🔧 회사 분석 정보 - 객체 안전 렌더링 */}
+
         {plan?.companyInfo && (
           <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #e2e8f0' }}>
             <h4 style={{ fontSize: '14px', marginBottom: '10px', color: '#374151' }}>회사 분석 결과</h4>
@@ -2941,171 +2669,176 @@ const renderNewPlanStructure = (plan) => {
         )}
       </div>
 
-      {/* 🔥 ENHANCED: 에피소드 섹션 (활용 전략 정보 포함) */}
+      {/* ✅ 컬러 제거: 에피소드 섹션 카드 배경 분기(노랑/초록) 제거 */}
       <div className="section-card">
         <h3>
-          <GlassIcon type="episodes" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }}/>
+          <GlassIcon type="episodes" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
           활용 가능 에피소드 & 전략 v4.2
-          <span style={{ 
-            marginLeft: '12px', 
-            fontSize: '12px', 
-            color: '#6b7280' 
-          }}>
+          <span style={{ marginLeft: '12px', fontSize: '12px', color: '#6b7280' }}>
             ({plan?.episodes?.length || plan?.sourceEpisodes?.length || 0}개)
           </span>
         </h3>
-        
+
         {(plan?.episodes || plan?.sourceEpisodes) && (
           <>
-            {/* 개별 에피소드 (v4.2 활용 전략 정보 포함) */}
             {(plan.episodes || plan.sourceEpisodes || []).map((ep, index) => {
-              // 해당 에피소드가 어느 문단에서 활용되는지 찾기 (v4.2 업데이트)
-              const utilizationInfo = plan?.dynamicEpisodeUtilizationSummary?.find(
-                summary => summary.primaryEpisode === (ep.topic || ep.title)
-              ) || plan?.episodeUtilizationSummary?.find(
-                summary => summary.primaryEpisode === (ep.topic || ep.title)
-              );
-              
+              const utilizationInfo =
+                plan?.dynamicEpisodeUtilizationSummary?.find(
+                  summary => summary.primaryEpisode === (ep.topic || ep.title)
+                ) ||
+                plan?.episodeUtilizationSummary?.find(
+                  summary => summary.primaryEpisode === (ep.topic || ep.title)
+                );
+
               return (
-                <div key={index} style={{ 
-                  marginBottom: '20px',
-                  padding: '15px',
-                  background: ep.source === 'cached' ? '#f0fdf4' : '#fefce8',
-                  borderRadius: '10px',
-                  border: `2px solid ${ep.source === 'cached' ? '#bbf7d0' : '#fde68a'}`
-                }}>
+                <div
+                  key={index}
+                  style={{
+                    marginBottom: '20px',
+                    padding: '15px',
+                    background: '#ffffff',
+                    borderRadius: '12px',
+                    border: '1px solid #e5e7eb',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
+                  }}
+                >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <strong style={{ color: '#1f2937', fontSize: '16px' }}>{ep.topic || ep.title || '제목 없음'}</strong>
-                    <div style={{ display: 'flex', gap: '6px' }}>
+                    <strong style={{ color: '#111827', fontSize: '16px' }}>
+                      {ep.topic || ep.title || '제목 없음'}
+                    </strong>
+
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       {ep.source && (
-                        <span style={{ 
-                          fontSize: '11px', 
-                          background: ep.source === 'cached' ? '#22c55e' : '#f59e0b',
-                          color: 'white',
-                          padding: '3px 8px', 
-                          borderRadius: '8px',
-                          fontWeight: 'bold'
-                        }}>
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            background: '#f3f4f6',
+                            color: '#111827',
+                            padding: '3px 8px',
+                            borderRadius: '10px',
+                            fontWeight: 'bold'
+                          }}
+                        >
                           {ep.source === 'cached' ? '캐시됨' : '폴백'}
                         </span>
                       )}
                       {ep.enhanced && (
-                        <span style={{ 
-                          fontSize: '11px', 
-                          background: '#8b5cf6',
-                          color: 'white',
-                          padding: '3px 8px', 
-                          borderRadius: '8px',
-                          fontWeight: 'bold'
-                        }}>
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            background: '#f3f4f6',
+                            color: '#111827',
+                            padding: '3px 8px',
+                            borderRadius: '10px',
+                            fontWeight: 'bold'
+                          }}
+                        >
                           강화됨
                         </span>
                       )}
                       {utilizationInfo && (
-                        <span style={{ 
-                          fontSize: '11px', 
-                          background: '#0ea5e9',
-                          color: 'white',
-                          padding: '3px 8px', 
-                          borderRadius: '8px',
-                          fontWeight: 'bold'
-                        }}>
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            background: '#e5e7eb',
+                            color: '#111827',
+                            padding: '3px 8px',
+                            borderRadius: '10px',
+                            fontWeight: 'bold'
+                          }}
+                        >
                           문단 {utilizationInfo.paragraphId}
                         </span>
                       )}
                     </div>
                   </div>
-                  
-                  <p style={{ 
-                    margin: '0', 
-                    color: '#4b5563', 
-                    fontSize: '14px',
-                    lineHeight: '1.6'
-                  }}>
-                    {((ep.episode || ep.content || ep.fullContent || '내용 없음').length > 400 
-                      ? `${(ep.episode || ep.content || ep.fullContent).substring(0, 400)}...` 
+
+                  <p
+                    style={{
+                      margin: '0',
+                      color: '#4b5563',
+                      fontSize: '14px',
+                      lineHeight: '1.6'
+                    }}
+                  >
+                    {((ep.episode || ep.content || ep.fullContent || '내용 없음').length > 400
+                      ? `${(ep.episode || ep.content || ep.fullContent).substring(0, 400)}...`
                       : (ep.episode || ep.content || ep.fullContent || '내용 없음')
                     )}
                   </p>
-                  
-                  <div style={{ 
-                    marginTop: '10px',
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '10px',
-                    fontSize: '12px',
-                    color: '#6b7280'
-                  }}>
-                    {ep.competency && (
-                      <span><strong>핵심 역량:</strong> {ep.competency}</span>
-                    )}
-                    {ep.company && (
-                      <span><strong>경험 회사:</strong> {ep.company}</span>
-                    )}
+
+                  <div
+                    style={{
+                      marginTop: '10px',
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '10px',
+                      fontSize: '12px',
+                      color: '#6b7280'
+                    }}
+                  >
+                    {ep.competency && <span><strong>핵심 역량:</strong> {ep.competency}</span>}
+                    {ep.company && <span><strong>경험 회사:</strong> {ep.company}</span>}
                   </div>
                 </div>
               );
             })}
           </>
         )}
-        
+
         {!plan?.episodes && !plan?.sourceEpisodes && (
-          <div style={{ 
-            padding: '20px', 
-            textAlign: 'center', 
-            color: '#6b7280',
-            background: '#f9fafb',
-            borderRadius: '8px'
-          }}>
+          <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280', background: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
             에피소드 정보가 없습니다. 에피소드를 먼저 생성해주세요.
           </div>
         )}
       </div>
 
-      {/* 🔥 ENHANCED v4.5: 메타데이터 및 시스템 상태 */}
+      {/* ✅ 컬러 제거: 메타데이터/세션 메모리 보라 박스 제거 */}
       {plan?.metadata && (
         <div className="section-card">
           <h3>
-            <GlassIcon type="chart" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }}/>
-            시스템 상태 및 생성 정보 {isMasterInstructions ? 'v4.5' : 'v4.2'}
+            <GlassIcon type="chart" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+            시스템 상태 및 생성 정보 {isMasterInstructions ? 'v5.5' : 'v4.2'}
           </h3>
-          
-          {/* 기본 성능 정보 */}
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: '1fr 1fr 1fr', 
-            gap: '12px', 
-            marginBottom: '15px',
-            padding: '12px',
-            background: '#f8fafc',
-            borderRadius: '6px'
-          }}>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr 1fr',
+              gap: '12px',
+              marginBottom: '15px',
+              padding: '12px',
+              background: '#f8fafc',
+              borderRadius: '8px',
+              border: '1px solid #e5e7eb'
+            }}
+          >
             <p><strong>버전:</strong> {plan.version || plan.metadata.version || 'v4.2'}</p>
             <p><strong>처리 시간:</strong> {plan.metadata.processingTimeMs}ms</p>
             <p><strong>생성 일시:</strong> {
-              plan.metadata.generatedAt 
+              plan.metadata.generatedAt
                 ? new Date(plan.metadata.generatedAt).toLocaleString('ko-KR')
                 : '정보 없음'
             }</p>
           </div>
-          
-          {/* 🔥 NEW: 세션 정보 */}
+
           {sessionId && (
-            <div style={{ 
-              marginBottom: '15px',
-              padding: '12px',
-              background: 'linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%)',
-              borderRadius: '8px',
-              border: '1px solid #d8b4fe'
-            }}>
-              <h4 style={{ fontSize: '14px', marginBottom: '8px', color: '#7c3aed' }}>
-                🧠 세션 메모리 시스템 {isMasterInstructions ? 'v4.5' : 'v4.2'}
+            <div
+              style={{
+                marginBottom: '15px',
+                padding: '12px',
+                background: '#ffffff',
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+              }}
+            >
+              <h4 style={{ fontSize: '14px', marginBottom: '8px', color: '#111827' }}>
+                🧠 세션 메모리 시스템 {isMasterInstructions ? 'v5.5' : 'v4.2'}
               </h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '13px' }}>
                 <span><strong>세션 ID:</strong> <code style={{ fontSize: '11px' }}>{sessionId}</code></span>
-                <span><strong>상태:</strong> 
-                  <span style={{ color: '#059669', fontWeight: 'bold', marginLeft: '4px' }}>활성화</span>
-                </span>
+                <span><strong>상태:</strong> <span style={{ color: '#111827', fontWeight: 'bold', marginLeft: '4px' }}>활성화</span></span>
               </div>
             </div>
           )}
@@ -3118,11 +2851,11 @@ const renderNewPlanStructure = (plan) => {
 const renderPlanTable = (plan, showSummarizedExperiences = true) => {
   console.log(`[${new Date().toISOString()}] Rendering plan table for topics:`, state.questionTopics);
   console.log(`[${new Date().toISOString()}] Received plan:`, typeof plan, plan);
- 
+
   if (typeof plan === 'object' && plan !== null) {
-    // 🔥 v4.5: Master Instructions 우선 체크
-    if (plan.paragraphInstructions || plan.version === '4.5-master-instructions') {
-      console.log(`[${new Date().toISOString()}] Using Master Instructions structure v4.5`);
+    // 🔥 v5.5: Master Instructions 우선 체크
+    if (plan.paragraphInstructions || plan.version?.includes('5.')) {
+      console.log(`[${new Date().toISOString()}] Using Master Instructions structure v5.5`);
       return renderNewPlanStructure(plan);
     }
     // 기존 구조 체크
@@ -3138,7 +2871,7 @@ const renderPlanTable = (plan, showSummarizedExperiences = true) => {
       );
     }
   }
- 
+
   if (typeof plan !== 'string') {
     console.log(`[${new Date().toISOString()}] Plan is not string or object:`, typeof plan);
     return (
@@ -3147,7 +2880,7 @@ const renderPlanTable = (plan, showSummarizedExperiences = true) => {
       </div>
     );
   }
- 
+
   console.log(`[${new Date().toISOString()}] Using legacy text parsing`);
   const lines = plan.split('\n').map(line => line.trim()).filter(line => line.length > 0);
   const companyJobAnalysisStart = lines.findIndex(line => line.includes('회사 및 직무 분석'));
@@ -3156,7 +2889,7 @@ const renderPlanTable = (plan, showSummarizedExperiences = true) => {
   const resumeSummaryStart = lines.findIndex(line => line.includes('사용자 이력서'));
   const topicEpisodeStart = lines.findIndex(line => line.includes('적용할 주제와 에피소드'));
   const tableStart = lines.findIndex(line => line.startsWith('| 문단 주제'));
- 
+
   let companyJobAnalysisSection = companyJobAnalysisStart !== -1 && directionStart !== -1
     ? lines.slice(companyJobAnalysisStart + 1, directionStart).join('\n').trim()
     : '회사 및 직무 분석 섹션이 없습니다.';
@@ -3174,7 +2907,7 @@ const renderPlanTable = (plan, showSummarizedExperiences = true) => {
   let topicEpisodeSection = topicEpisodeStart !== -1 && tableStart !== -1
     ? lines.slice(topicEpisodeStart + 1, tableStart).join('\n').trim()
     : '적용할 주제와 에피소드 섹션이 없습니다.';
- 
+
   const tableLines = tableStart !== -1 ? lines.slice(tableStart) : [];
   const headers = tableStart !== -1 ? tableLines[0].split('|').slice(1, -1).map(h => h.trim()) : ['문단 주제', '목적', '적용 경험', '방향성', '근거'];
   const rows = tableStart !== -1 ? tableLines.slice(2).filter(row => row.trim() !== '').map((row, rowIndex) => {
@@ -3189,42 +2922,42 @@ const renderPlanTable = (plan, showSummarizedExperiences = true) => {
     }
     return cells.slice(0, 5);
   }).filter(row => row.length >= 5) : [];
- 
+
   if (companyJobAnalysisSection === '회사 및 직무 분석 섹션이 없습니다.' && state.companyInfo.jobRequirements) {
     companyJobAnalysisSection = `회사 요구사항: ${state.companyInfo.jobRequirements}\n분석: ${state.companyInfo.company}의 ${state.companyInfo.jobTitle} 직무는 위 요구사항을 기반으로 사용자의 경험과 매칭됩니다.`;
   }
   if (companyInfoSection === '회사 정보 섹션이 없습니다.' && state.companyInfo.company) {
     companyInfoSection = `회사명: ${state.companyInfo.company}\n직무명: ${state.companyInfo.jobTitle}\n요구사항: ${state.companyInfo.jobRequirements || '정보 없음'}\n업무: ${state.companyInfo.jobTasks || '정보 없음'}\n질문: ${state.companyInfo.questions || '정보 없음'}\n최대 글자수: ${state.companyInfo.wordLimit || '1000'}자`;
   }
- 
+
   return (
     <>
       <div className="section-card">
-        <h3><GlassIcon type="chart" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }}/>회사 및 직무 분석</h3>
+        <h3><GlassIcon type="chart" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />회사 및 직무 분석</h3>
         {companyJobAnalysisSection.split('\n').map((paragraph, index) => (
           <p key={index}>{paragraph.trim() || '내용 없음'}</p>
         ))}
       </div>
       <div className="section-card">
-        <h3><GlassIcon type="arrow" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }}/>자소서 방향성</h3>
+        <h3><GlassIcon type="arrow" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />자소서 방향성</h3>
         {directionSection.split('\n').map((paragraph, index) => (
           <p key={index}>{paragraph.trim() || '내용 없음'}</p>
         ))}
       </div>
       <div className="section-card">
-        <h3><GlassIcon type="company" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }}/>회사 정보</h3>
+        <h3><GlassIcon type="company" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />회사 정보</h3>
         {companyInfoSection.split('\n').map((paragraph, index) => (
           <p key={index}>{paragraph.trim() || '내용 없음'}</p>
         ))}
       </div>
       <div className="section-card">
-        <h3><GlassIcon type="document" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }}/>사용자 이력서</h3>
+        <h3><GlassIcon type="document" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />사용자 이력서</h3>
         {resumeSummarySection.split('\n').map((paragraph, index) => (
           <p key={index}>{paragraph.trim() || '내용 없음'}</p>
         ))}
       </div>
       <div className="section-card">
-        <h3><GlassIcon type="episodes" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }}/>적용할 주제와 에피소드</h3>
+        <h3><GlassIcon type="episodes" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />적용할 주제와 에피소드</h3>
         {topicEpisodeSection.split('\n').map((paragraph, index) => (
           <p key={index}>{paragraph.trim() || '내용 없음'}</p>
         ))}
