@@ -899,7 +899,7 @@ function App() {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000);
-      const response = await fetch('http://localhost:3001/pre-analyze', {
+      const response = await fetch('https://youngsun-xi.vercel.app/pre-analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -951,7 +951,7 @@ function App() {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000);
-      const response = await fetch('http://localhost:3001/analyze-all', {
+      const response = await fetch('https://youngsun-xi.vercel.app/analyze-all', {
         method: 'POST',
         body: formData,
         signal: controller.signal,
@@ -1088,7 +1088,7 @@ function App() {
         questionTopics: state.questionTopics
       };
    
-      const response = await fetch('http://localhost:3001/suggest-direction', {
+      const response = await fetch('https://youngsun-xi.vercel.app/suggest-direction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
@@ -1208,7 +1208,7 @@ function App() {
       setQuestionCount(0);
       setCurrentQuestionHint('');
      
-      const response = await fetch('http://localhost:3001/generate-question', {
+      const response = await fetch('https://youngsun-xi.vercel.app/generate-question', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1278,7 +1278,7 @@ function App() {
         console.log(`[${new Date().toISOString()}] step ${currentStep - 1} question success`);
       }
       dispatch({ type: 'SET_CHAT_LOADING', chatLoading: true, message: '생각 중...' });
-      const response = await fetch('http://localhost:3001/generate-question', {
+      const response = await fetch('https://youngsun-xi.vercel.app/generate-question', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1419,7 +1419,7 @@ function App() {
         throw new Error(`주제 ${currentTopic}에 선택된 경험이 없습니다.`);
       }
       console.log(`[${new Date().toISOString()}] Sending /generate-episode with selectedExperienceIndices:`, state.selectedExperiencesIndices);
-      const response = await fetch('http://localhost:3001/generate-episode', {
+      const response = await fetch('https://youngsun-xi.vercel.app/generate-episode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1516,7 +1516,7 @@ function App() {
       }
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 600000);
-      const response = await fetch('http://localhost:3001/generate-plan', {
+      const response = await fetch('https://youngsun-xi.vercel.app/generate-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1580,7 +1580,7 @@ function App() {
       }
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000);
-      const response = await fetch('http://localhost:3001/generate-cover-letter', {
+      const response = await fetch('https://youngsun-xi.vercel.app/generate-cover-letter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1665,7 +1665,7 @@ function App() {
       
       console.log(`[${new Date().toISOString()}] [Proofreading] Sending request to /edit-cover-letter`);
       
-      const response = await fetch('http://localhost:3001/edit-cover-letter', {
+      const response = await fetch('https://youngsun-xi.vercel.app/edit-cover-letter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
