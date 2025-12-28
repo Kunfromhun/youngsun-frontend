@@ -807,8 +807,11 @@ function App() {
   const [showAiSuggestionPopup, setShowAiSuggestionPopup] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ✅ 새로 추가: 첨삭 완료 상태 추적
+  // ✅ 첨삭 완료 상태 추적
   const [isProofreadingComplete, setIsProofreadingComplete] = useState(false);
+
+  // ✅ 🔥 NEW: 첨삭 수정내용 팝업 상태
+  const [showEditInfoPopup, setShowEditInfoPopup] = useState(null); // { paragraphId, editInstructions }
 
   // 힌트 관련 state
   const [currentQuestionHint, setCurrentQuestionHint] = useState('');
@@ -1642,7 +1645,7 @@ function App() {
     }
   };
 
-  // ✅ 수정: handleFinalizeCoverLetter
+  // ✅ 🔥 수정: handleFinalizeCoverLetter - editInstructions 저장 추가
   const handleFinalizeCoverLetter = async () => {
     console.log(`[${new Date().toISOString()}] Finalizing cover letter:`, {
       resumeId: state.resumeId,
@@ -1690,6 +1693,7 @@ function App() {
       console.log(`[${new Date().toISOString()}] [Proofreading] Response received:`, data);
       console.log(`[DEBUG] data.paragraphs:`, data.paragraphs);
       
+      // 🔥 수정: editInstructions도 함께 저장
       const editedParagraphs = data.paragraphs.map(p => {
         console.log(`[DEBUG] 문단 ${p.id}: original=${p.original?.substring(0, 50)}..., edited=${p.edited?.substring(0, 50)}...`);
         return {
@@ -1697,7 +1701,9 @@ function App() {
           text: p.edited,
           originalText: p.original,
           originalCharCount: p.originalCharCount,
-          editedCharCount: p.editedCharCount
+          editedCharCount: p.editedCharCount,
+          // 🔥 NEW: 수정 내용 저장
+          editInstructions: p.editMetadata?.editInstructions || []
         };
       });
       
@@ -1842,8 +1848,187 @@ function App() {
     </div>
   );
 
+// 🔥 NEW: 수정 내용 팝업 컴포넌트
+const EditInfoPopup = ({ paragraphId, editInstructions, onClose }) => {
+  if (!editInstructions || editInstructions.length === 0) {
+    return (
+      <>
+        <div 
+          className="modal-overlay" 
+          onClick={onClose}
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0, 0, 0, 0.3)',
+            zIndex: 9998
+          }}
+        />
+        <div style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          background: '#FFFFFF',
+          borderRadius: '12px',
+          padding: '24px',
+          minWidth: '320px',
+          maxWidth: '480px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+          border: '1px solid #E5E7EB',
+          zIndex: 9999
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '16px'
+          }}>
+            <h3 style={{ 
+              margin: 0, 
+              fontSize: '16px', 
+              fontWeight: '600',
+              color: '#1D1D1F'
+            }}>
+              문단 {paragraphId} 수정 내용
+            </h3>
+            <button
+              onClick={onClose}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '20px',
+                cursor: 'pointer',
+                color: '#86868B',
+                padding: '4px',
+                lineHeight: 1
+              }}
+            >
+              ×
+            </button>
+          </div>
+          <p style={{ 
+            color: '#86868B', 
+            fontSize: '14px',
+            margin: 0 
+          }}>
+            수정 내용이 없습니다.
+          </p>
+        </div>
+      </>
+    );
+  }
 
-  // End of Section 1
+  return (
+    <>
+      <div 
+        className="modal-overlay" 
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.3)',
+          zIndex: 9998
+        }}
+      />
+      <div style={{
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        background: '#FFFFFF',
+        borderRadius: '12px',
+        padding: '24px',
+        minWidth: '320px',
+        maxWidth: '480px',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+        border: '1px solid #E5E7EB',
+        zIndex: 9999
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '20px'
+        }}>
+          <h3 style={{ 
+            margin: 0, 
+            fontSize: '16px', 
+            fontWeight: '600',
+            color: '#1D1D1F'
+          }}>
+            문단 {paragraphId} 수정 내용
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '20px',
+              cursor: 'pointer',
+              color: '#86868B',
+              padding: '4px',
+              lineHeight: 1,
+              transition: 'color 0.2s ease'
+            }}
+            onMouseEnter={(e) => e.target.style.color = '#1D1D1F'}
+            onMouseLeave={(e) => e.target.style.color = '#86868B'}
+          >
+            ×
+          </button>
+        </div>
+        
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}>
+          {editInstructions.map((instruction, index) => (
+            <div 
+              key={index}
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                padding: '12px',
+                background: '#F9FAFB',
+                borderRadius: '8px',
+                border: '1px solid #E5E7EB'
+              }}
+            >
+              <span style={{
+                flexShrink: 0,
+                width: '24px',
+                height: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#E5E7EB',
+                borderRadius: '50%',
+                fontSize: '12px',
+                fontWeight: '600',
+                color: '#4B5563'
+              }}>
+                {index + 1}
+              </span>
+              <p style={{
+                margin: 0,
+                fontSize: '14px',
+                lineHeight: '1.5',
+                color: '#374151',
+                wordBreak: 'keep-all'
+              }}>
+                {instruction}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+};
+
+
+// End of Section 1
 
 
 // 글래스모피즘 힌트 아이콘 컴포넌트 - 토글 방식으로 변경
@@ -3006,12 +3191,53 @@ useEffect(() => {
 
 // Load initial experiences when entering direction-selection
 useEffect(() => {
-  if (screen === 'direction-selection' && state.resumeId && state.analysisId && state.selectedExperiences.length === 0) {
-    console.log(`[${new Date().toISOString()}] Loading initial experiences for resumeId=${state.resumeId}, analysisId=${state.analysisId}`);
+  if (
+    screen === 'direction-selection' &&
+    state.resumeId &&
+    state.analysisId &&
+    state.selectedExperiences.length === 0
+  ) {
+    console.log(
+      `[${new Date().toISOString()}] Loading initial experiences for resumeId=${state.resumeId}, analysisId=${state.analysisId}`
+    );
     handleDirectionSuggestion(state.resumeId, state.analysisId);
   }
-}, [screen, state.resumeId, state.analysisId, state.selectedExperiences.length, ]);
+}, [screen, state.resumeId, state.analysisId, state.selectedExperiences.length]);
 
+/**
+ * 🔥 NEW: 문단별 수정 내용 팝업 (이름 변경해서 중복 방지)
+ * - 기존 EditInfoPopup이 프로젝트 어딘가에 있어도 충돌 안 남
+ */
+const ParagraphEditInfoPopup = ({ paragraphId, editInstructions, onClose }) => {
+  return (
+    <>
+      <div className="modal-overlay" onClick={onClose} />
+      <div className="modal suggestion-modal">
+        <div className="modal-header">
+          <span>수정 내용</span>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-content">
+          <p style={{ marginBottom: '12px', color: '#86868B', fontSize: '13px' }}>
+            문단 ID: {paragraphId}
+          </p>
+
+          {Array.isArray(editInstructions) && editInstructions.length > 0 ? (
+            <ul style={{ paddingLeft: '18px', margin: 0 }}>
+              {editInstructions.map((inst, idx) => (
+                <li key={idx} style={{ marginBottom: '10px', lineHeight: 1.6 }}>
+                  {typeof inst === 'string' ? inst : JSON.stringify(inst)}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>표시할 수정 내용이 없습니다.</p>
+          )}
+        </div>
+      </div>
+    </>
+  );
+};
 
 return (
   <div className="app-container">
@@ -3022,7 +3248,9 @@ return (
           {PROCESS_STEPS.map((step, index) => (
             <div
               key={index}
-              className={`progress-step ${index === currentProcessStep ? 'active' : ''} ${index < currentProcessStep ? 'completed' : ''}`}
+              className={`progress-step ${index === currentProcessStep ? 'active' : ''} ${
+                index < currentProcessStep ? 'completed' : ''
+              }`}
             >
               <span className="step-number">{index + 1}</span>
               <span className="step-label">{step}</span>
@@ -3030,7 +3258,7 @@ return (
           ))}
         </div>
       )}
-      
+
       {/* Error Modal */}
       {error && (
         <>
@@ -3038,24 +3266,43 @@ return (
           <div className="modal error-modal">
             <p>{error}</p>
             <div className="modal-actions">
-              <button className="button-secondary" onClick={() => setError(null)}>닫기</button>
-              {error.includes('분석 실패') && <button className="button-primary" onClick={(e) => handleAnalysisSubmit(e)}>재시도</button>}
-              {error.includes('사전 분석 실패') && <button className="button-primary" onClick={(e) => handlePreAnalysisSubmit(e)}>재시도</button>}
-              {error.includes('계획서 생성 실패') && <button className="button-primary" onClick={handlePlanRequest}>재시도</button>}
-              {error.includes('첨삭 실패') && <button className="button-primary" onClick={handleFinalizeCoverLetter}>재시도</button>}
+              <button className="button-secondary" onClick={() => setError(null)}>
+                닫기
+              </button>
+              {error.includes('분석 실패') && (
+                <button className="button-primary" onClick={(e) => handleAnalysisSubmit(e)}>
+                  재시도
+                </button>
+              )}
+              {error.includes('사전 분석 실패') && (
+                <button className="button-primary" onClick={(e) => handlePreAnalysisSubmit(e)}>
+                  재시도
+                </button>
+              )}
+              {error.includes('계획서 생성 실패') && (
+                <button className="button-primary" onClick={handlePlanRequest}>
+                  재시도
+                </button>
+              )}
+              {error.includes('첨삭 실패') && (
+                <button className="button-primary" onClick={handleFinalizeCoverLetter}>
+                  재시도
+                </button>
+              )}
             </div>
           </div>
         </>
       )}
 
       {screen === 'start' && (
-        <div className={`start-screen ${animationComplete ? 'intro-done' : ''}`}
-           onClick={(e) => {
-             if (!animationComplete) return;
-             const logo = e.target.closest('.final-logo');
-             if (logo) handleStartWriting();
-           }}
-           style={{ position: 'relative', minHeight: '100vh' }}
+        <div
+          className={`start-screen ${animationComplete ? 'intro-done' : ''}`}
+          onClick={(e) => {
+            if (!animationComplete) return;
+            const logo = e.target.closest('.final-logo');
+            if (logo) handleStartWriting();
+          }}
+          style={{ position: 'relative', minHeight: '100vh' }}
         >
           <IntroAnimation onComplete={() => setAnimationComplete(true)} />
           {animationComplete && (
@@ -3075,7 +3322,7 @@ return (
                 zIndex: 20
               }}
             >
-              {['D','E','E','P','G','L'].map((ch, i) => (
+              {['D', 'E', 'E', 'P', 'G', 'L'].map((ch, i) => (
                 <span
                   key={i}
                   className="wordmark-letter"
@@ -3125,44 +3372,53 @@ return (
             </button>
           )}
           {state.loading && (
-            <div className="loading-modal-overlay" style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0, 0, 0, 0.2)',
-              backdropFilter: 'blur(15px)',
-              WebkitBackdropFilter: 'blur(15px)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 9999,
-              animation: 'fadeIn 0.3s ease-out'
-            }}>
-              <div className="loading-modal" style={{
-                background: 'rgba(255, 255, 255, 0.8)',
-                backdropFilter: 'blur(30px)',
-                WebkitBackdropFilter: 'blur(30px)',
-                borderRadius: '20px',
-                padding: '48px',
-                boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1)',
-                textAlign: 'center',
-                minWidth: '280px',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                animation: 'liquidSlide 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
-              }}>
-                <div className="loading-indicator" style={{
-                  margin: '0 auto 24px auto',
-                  width: '80px',
-                  height: '80px',
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
+            <div
+              className="loading-modal-overlay"
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0, 0, 0, 0.2)',
+                backdropFilter: 'blur(15px)',
+                WebkitBackdropFilter: 'blur(15px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 9999,
+                animation: 'fadeIn 0.3s ease-out'
+              }}
+            >
+              <div
+                className="loading-modal"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.8)',
+                  backdropFilter: 'blur(30px)',
+                  WebkitBackdropFilter: 'blur(30px)',
+                  borderRadius: '20px',
+                  padding: '48px',
+                  boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1)',
+                  textAlign: 'center',
+                  minWidth: '280px',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  animation: 'liquidSlide 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+                }}
+              >
+                <div
+                  className="loading-indicator"
+                  style={{
+                    margin: '0 auto 24px auto',
+                    width: '80px',
+                    height: '80px',
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
                   <DeepGlLogo size={80} />
-                  
+
                   {/* 첫 번째 파동 링 */}
                   <div
                     style={{
@@ -3178,7 +3434,7 @@ return (
                       pointerEvents: 'none'
                     }}
                   />
-                  
+
                   {/* 두 번째 파동 링 */}
                   <div
                     style={{
@@ -3195,7 +3451,7 @@ return (
                       pointerEvents: 'none'
                     }}
                   />
-                  
+
                   {/* 세 번째 파동 링 */}
                   <div
                     style={{
@@ -3213,13 +3469,17 @@ return (
                     }}
                   />
                 </div>
-                
-                <p style={{
-                  color: '#1D1D1F',
-                  fontSize: '17px',
-                  fontWeight: '500',
-                  margin: 0
-                }}>{currentMessage}</p>
+
+                <p
+                  style={{
+                    color: '#1D1D1F',
+                    fontSize: '17px',
+                    fontWeight: '500',
+                    margin: 0
+                  }}
+                >
+                  {currentMessage}
+                </p>
               </div>
             </div>
           )}
@@ -3235,35 +3495,60 @@ return (
               className="input-field"
               placeholder="지원 회사 (예: 토스)"
               value={state.companyInfo.company}
-              onChange={(e) => dispatch({ type: 'SET_PRE_ANALYSIS', companyInfo: { ...state.companyInfo, company: e.target.value } })}
+              onChange={(e) =>
+                dispatch({
+                  type: 'SET_PRE_ANALYSIS',
+                  companyInfo: { ...state.companyInfo, company: e.target.value }
+                })
+              }
               disabled={state.loading}
             />
             <input
               className="input-field"
               placeholder="지원 직무 (예: 인사관리)"
               value={state.companyInfo.jobTitle}
-              onChange={(e) => dispatch({ type: 'SET_PRE_ANALYSIS', companyInfo: { ...state.companyInfo, jobTitle: e.target.value } })}
+              onChange={(e) =>
+                dispatch({
+                  type: 'SET_PRE_ANALYSIS',
+                  companyInfo: { ...state.companyInfo, jobTitle: e.target.value }
+                })
+              }
               disabled={state.loading}
             />
             <textarea
               className="input-field textarea-field"
               placeholder="지원 직무에서 하게 될 업무"
               value={state.companyInfo.jobTasks}
-              onChange={(e) => dispatch({ type: 'SET_PRE_ANALYSIS', companyInfo: { ...state.companyInfo, jobTasks: e.target.value } })}
+              onChange={(e) =>
+                dispatch({
+                  type: 'SET_PRE_ANALYSIS',
+                  companyInfo: { ...state.companyInfo, jobTasks: e.target.value }
+                })
+              }
               disabled={state.loading}
             />
             <textarea
               className="input-field textarea-field"
               placeholder="지원 직무에서 원하는 인재상 및 강점"
               value={state.companyInfo.jobRequirements}
-              onChange={(e) => dispatch({ type: 'SET_PRE_ANALYSIS', companyInfo: { ...state.companyInfo, jobRequirements: e.target.value } })}
+              onChange={(e) =>
+                dispatch({
+                  type: 'SET_PRE_ANALYSIS',
+                  companyInfo: { ...state.companyInfo, jobRequirements: e.target.value }
+                })
+              }
               disabled={state.loading}
             />
             <textarea
               className="input-field textarea-field"
               placeholder="자소서에서 묻는 질문 (예: 지원 동기 및 입사 후 포부)"
               value={state.companyInfo.questions}
-              onChange={(e) => dispatch({ type: 'SET_PRE_ANALYSIS', companyInfo: { ...state.companyInfo, questions: e.target.value } })}
+              onChange={(e) =>
+                dispatch({
+                  type: 'SET_PRE_ANALYSIS',
+                  companyInfo: { ...state.companyInfo, questions: e.target.value }
+                })
+              }
               disabled={state.loading}
             />
             <input
@@ -3271,10 +3556,18 @@ return (
               className="input-field"
               placeholder="최대 글자수 입력 (예: 1000, 기본 1000자)"
               value={state.companyInfo.wordLimit}
-              onChange={(e) => dispatch({ type: 'SET_PRE_ANALYSIS', companyInfo: { ...state.companyInfo, wordLimit: e.target.value } })}
+              onChange={(e) =>
+                dispatch({
+                  type: 'SET_PRE_ANALYSIS',
+                  companyInfo: { ...state.companyInfo, wordLimit: e.target.value }
+                })
+              }
               disabled={state.loading}
             />
-            <form onSubmit={handlePreAnalysisSubmit} style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+            <form
+              onSubmit={handlePreAnalysisSubmit}
+              style={{ display: 'flex', justifyContent: 'center', width: '100%' }}
+            >
               <button
                 type="submit"
                 className="button-primary"
@@ -3284,93 +3577,113 @@ return (
                 <span>딥글에 제출하기</span>
               </button>
             </form>
+
             {state.loading && (
-              <div className="loading-modal-overlay" style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: 'rgba(0, 0, 0, 0.2)',
-                backdropFilter: 'blur(15px)',
-                WebkitBackdropFilter: 'blur(15px)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 9999,
-                animation: 'fadeIn 0.3s ease-out'
-              }}>
-                <div className="loading-modal" style={{
-                  background: 'rgba(255, 255, 255, 0.8)',
-                  backdropFilter: 'blur(30px)',
-                  WebkitBackdropFilter: 'blur(30px)',
-                  borderRadius: '20px',
-                  padding: '48px',
-                  boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1)',
-                  textAlign: 'center',
-                  minWidth: '280px',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  animation: 'liquidSlide 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
-                }}>
-                  <div className="loading-indicator" style={{
-                    margin: '0 auto 24px auto',
-                    width: '80px',
-                    height: '80px',
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
+              <div
+                className="loading-modal-overlay"
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'rgba(0, 0, 0, 0.2)',
+                  backdropFilter: 'blur(15px)',
+                  WebkitBackdropFilter: 'blur(15px)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 9999,
+                  animation: 'fadeIn 0.3s ease-out'
+                }}
+              >
+                <div
+                  className="loading-modal"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.8)',
+                    backdropFilter: 'blur(30px)',
+                    WebkitBackdropFilter: 'blur(30px)',
+                    borderRadius: '20px',
+                    padding: '48px',
+                    boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1)',
+                    textAlign: 'center',
+                    minWidth: '280px',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    animation: 'liquidSlide 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+                  }}
+                >
+                  <div
+                    className="loading-indicator"
+                    style={{
+                      margin: '0 auto 24px auto',
+                      width: '80px',
+                      height: '80px',
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
                     <DeepGlLogo size={80} />
-                    
-                    <div style={{
-                      position: 'absolute',
-                      left: '50%',
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      width: '80px',
-                      height: '80px',
-                      borderRadius: '50%',
-                      border: '1px solid rgba(107,114,128,0.3)',
-                      animation: 'loadingPulse1 2.5s ease-out infinite',
-                      pointerEvents: 'none'
-                    }} />
-                    
-                    <div style={{
-                      position: 'absolute',
-                      left: '50%',
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      width: '80px',
-                      height: '80px',
-                      borderRadius: '50%',
-                      border: '1px solid rgba(107,114,128,0.2)',
-                      animation: 'loadingPulse2 2.5s ease-out infinite',
-                      animationDelay: '0.8s',
-                      pointerEvents: 'none'
-                    }} />
-                    
-                    <div style={{
-                      position: 'absolute',
-                      left: '50%',
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      width: '80px',
-                      height: '80px',
-                      borderRadius: '50%',
-                      border: '1px solid rgba(107,114,128,0.15)',
-                      animation: 'loadingPulse3 2.5s ease-out infinite',
-                      animationDelay: '1.6s',
-                      pointerEvents: 'none'
-                    }} />
+
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: '50%',
+                        top: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '80px',
+                        height: '80px',
+                        borderRadius: '50%',
+                        border: '1px solid rgba(107,114,128,0.3)',
+                        animation: 'loadingPulse1 2.5s ease-out infinite',
+                        pointerEvents: 'none'
+                      }}
+                    />
+
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: '50%',
+                        top: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '80px',
+                        height: '80px',
+                        borderRadius: '50%',
+                        border: '1px solid rgba(107,114,128,0.2)',
+                        animation: 'loadingPulse2 2.5s ease-out infinite',
+                        animationDelay: '0.8s',
+                        pointerEvents: 'none'
+                      }}
+                    />
+
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: '50%',
+                        top: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '80px',
+                        height: '80px',
+                        borderRadius: '50%',
+                        border: '1px solid rgba(107,114,128,0.15)',
+                        animation: 'loadingPulse3 2.5s ease-out infinite',
+                        animationDelay: '1.6s',
+                        pointerEvents: 'none'
+                      }}
+                    />
                   </div>
-                  
-                  <p style={{
-                    color: '#1D1D1F',
-                    fontSize: '17px',
-                    fontWeight: '500',
-                    margin: 0
-                  }}>{currentMessage}</p>
+
+                  <p
+                    style={{
+                      color: '#1D1D1F',
+                      fontSize: '17px',
+                      fontWeight: '500',
+                      margin: 0
+                    }}
+                  >
+                    {currentMessage}
+                  </p>
                 </div>
               </div>
             )}
@@ -3382,17 +3695,21 @@ return (
       {screen === 'pre-analysis-review' && (
         <div className="screen-container">
           <h2>딥글이 분석한 초기 역량 확인</h2>
-          <p className="description-text">딥글이 회사 정보를 분석해서 자소서에 필요한 초기 역량을 골랐습니다. Perplexity 검색 결과를 기반으로 분석했습니다. 확인하고 이력서를 업로드하세요.</p>
+          <p className="description-text">
+            딥글이 회사 정보를 분석해서 자소서에 필요한 초기 역량을 골랐습니다. Perplexity 검색 결과를 기반으로
+            분석했습니다. 확인하고 이력서를 업로드하세요.
+          </p>
+
           <div className="card-grid">
-  {state.preCompetencies.slice(0, state.questionTopics.length).map((comp, index) => (
-    <div key={index} className="card">
-      <p className="card-title" style={{ fontWeight: 800 }}>
-        {(comp.talentProfile || comp.keyword)} : {comp.keyword}
-      </p>
-      <p className="card-description">{comp.reason}</p>
-    </div>
-  ))}
-</div>
+            {state.preCompetencies.slice(0, state.questionTopics.length).map((comp, index) => (
+              <div key={index} className="card">
+                <p className="card-title" style={{ fontWeight: 800 }}>
+                  {(comp.talentProfile || comp.keyword)} : {comp.keyword}
+                </p>
+                <p className="card-description">{comp.reason}</p>
+              </div>
+            ))}
+          </div>
 
           {state.source && state.source.length > 0 && (
             <div className="source-links">
@@ -3409,6 +3726,7 @@ return (
               ))}
             </div>
           )}
+
           <div className="form-container">
             <label className="file-upload-label">
               <span>이력서 업로드 (PDF)</span>
@@ -3418,106 +3736,131 @@ return (
                 accept=".pdf"
                 className="file-input"
                 disabled={state.loading}
-                onChange={(e) => dispatch({ type: 'SET_PRE_ANALYSIS', companyInfo: { ...state.companyInfo, resumeFile: e.target.files[0] } })}
+                onChange={(e) =>
+                  dispatch({
+                    type: 'SET_PRE_ANALYSIS',
+                    companyInfo: { ...state.companyInfo, resumeFile: e.target.files[0] }
+                  })
+                }
               />
             </label>
-            <form onSubmit={handleAnalysisSubmit} style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-              <button
-                type="submit"
-                className="button-primary"
-                disabled={state.loading || !state.companyInfo.resumeFile}
-              >
+
+            <form
+              onSubmit={handleAnalysisSubmit}
+              style={{ display: 'flex', justifyContent: 'center', width: '100%' }}
+            >
+              <button type="submit" className="button-primary" disabled={state.loading || !state.companyInfo.resumeFile}>
                 <GlassIcon type="check" size={20} style={{ marginRight: '8px' }} />
                 <span>이력서 제출하고 최종 분석하기</span>
               </button>
             </form>
+
             {state.loading && (
-            <div className="loading-modal-overlay" style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0, 0, 0, 0.2)',
-              backdropFilter: 'blur(15px)',
-              WebkitBackdropFilter: 'blur(15px)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 9999,
-              animation: 'fadeIn 0.3s ease-out'
-            }}>
-              <div className="loading-modal" style={{
-                background: 'rgba(255, 255, 255, 0.8)',
-                backdropFilter: 'blur(30px)',
-                WebkitBackdropFilter: 'blur(30px)',
-                borderRadius: '20px',
-                padding: '48px',
-                boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1)',
-                textAlign: 'center',
-                minWidth: '280px',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                animation: 'liquidSlide 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
-              }}>
-                <div className="loading-indicator" style={{
-                  margin: '0 auto 24px auto',
-                  width: '80px',
-                  height: '80px',
-                  position: 'relative',
+              <div
+                className="loading-modal-overlay"
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'rgba(0, 0, 0, 0.2)',
+                  backdropFilter: 'blur(15px)',
+                  WebkitBackdropFilter: 'blur(15px)',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <DeepGlLogo size={80} />
-                  <div style={{
-                    position: 'absolute',
-                    left: '50%',
-                    top: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: '80px',
-                    height: '80px',
-                    borderRadius: '50%',
-                    border: '1px solid rgba(107,114,128,0.3)',
-                    animation: 'loadingPulse1 2.5s ease-out infinite',
-                    pointerEvents: 'none'
-                  }} />
-                  <div style={{
-                    position: 'absolute',
-                    left: '50%',
-                    top: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: '80px',
-                    height: '80px',
-                    borderRadius: '50%',
-                    border: '1px solid rgba(107,114,128,0.2)',
-                    animation: 'loadingPulse2 2.5s ease-out infinite',
-                    animationDelay: '0.8s',
-                    pointerEvents: 'none'
-                  }} />
-                  <div style={{
-                    position: 'absolute',
-                    left: '50%',
-                    top: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: '80px',
-                    height: '80px',
-                    borderRadius: '50%',
-                    border: '1px solid rgba(107,114,128,0.15)',
-                    animation: 'loadingPulse3 2.5s ease-out infinite',
-                    animationDelay: '1.6s',
-                    pointerEvents: 'none'
-                  }} />
+                  justifyContent: 'center',
+                  zIndex: 9999,
+                  animation: 'fadeIn 0.3s ease-out'
+                }}
+              >
+                <div
+                  className="loading-modal"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.8)',
+                    backdropFilter: 'blur(30px)',
+                    WebkitBackdropFilter: 'blur(30px)',
+                    borderRadius: '20px',
+                    padding: '48px',
+                    boxShadow: '0 25px 50px rgba(0, 0, 0, 0.1)',
+                    textAlign: 'center',
+                    minWidth: '280px',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    animation: 'liquidSlide 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+                  }}
+                >
+                  <div
+                    className="loading-indicator"
+                    style={{
+                      margin: '0 auto 24px auto',
+                      width: '80px',
+                      height: '80px',
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <DeepGlLogo size={80} />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: '50%',
+                        top: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '80px',
+                        height: '80px',
+                        borderRadius: '50%',
+                        border: '1px solid rgba(107,114,128,0.3)',
+                        animation: 'loadingPulse1 2.5s ease-out infinite',
+                        pointerEvents: 'none'
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: '50%',
+                        top: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '80px',
+                        height: '80px',
+                        borderRadius: '50%',
+                        border: '1px solid rgba(107,114,128,0.2)',
+                        animation: 'loadingPulse2 2.5s ease-out infinite',
+                        animationDelay: '0.8s',
+                        pointerEvents: 'none'
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: '50%',
+                        top: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '80px',
+                        height: '80px',
+                        borderRadius: '50%',
+                        border: '1px solid rgba(107,114,128,0.15)',
+                        animation: 'loadingPulse3 2.5s ease-out infinite',
+                        animationDelay: '1.6s',
+                        pointerEvents: 'none'
+                      }}
+                    />
+                  </div>
+
+                  <p
+                    style={{
+                      color: '#1D1D1F',
+                      fontSize: '17px',
+                      fontWeight: '500',
+                      margin: 0
+                    }}
+                  >
+                    {currentMessage}
+                  </p>
                 </div>
-                
-                <p style={{
-                  color: '#1D1D1F',
-                  fontSize: '17px',
-                  fontWeight: '500',
-                  margin: 0
-                }}>{currentMessage}</p>
               </div>
-            </div>
-          )}
+            )}
           </div>
         </div>
       )}
@@ -3526,108 +3869,135 @@ return (
       {screen === 'competency-review' && (
         <div className="screen-container">
           <h2>딥글이 분석한 최종 역량 확인</h2>
-          <p className="description-text">딥글이 이력서와 회사 정보를 분석해서 자소서 주제에 맞는 최종 역량을 골랐습니다. 확인하고 다음 단계로 넘어가세요.</p>
+          <p className="description-text">
+            딥글이 이력서와 회사 정보를 분석해서 자소서 주제에 맞는 최종 역량을 골랐습니다. 확인하고 다음 단계로
+            넘어가세요.
+          </p>
           <div className="card-grid">
             {state.selectedForTopics.map((item, index) => (
               <div key={index} className="card selected">
                 <p className="card-title">{item.topic}</p>
-                <p><strong>인재상:</strong> {item.talentProfile || '분석 중...'}</p>
-                <p><strong>핵심역량:</strong> {item.competency}</p>
+                <p>
+                  <strong>인재상:</strong> {item.talentProfile || '분석 중...'}
+                </p>
+                <p>
+                  <strong>핵심역량:</strong> {item.competency}
+                </p>
                 <p className="card-description">{item.reason}</p>
               </div>
             ))}
           </div>
-          <button
-            className="button-primary"
-            onClick={goToDirectionSelection}
-            disabled={state.loading}
-          >
+          <button className="button-primary" onClick={goToDirectionSelection} disabled={state.loading}>
             <GlassIcon type="arrow" size={20} style={{ marginRight: '8px' }} />
             <span>경험 구체화 방향 선택하러 가기</span>
           </button>
         </div>
       )}
 
-{screen === 'direction-selection' && (
-  <div className="screen-container">
-    <h2>구체화 방향성 선택</h2>
-    <div className="topic-indicator">
-      현재 주제: {state.questionTopics[currentExperienceStep - 1]} ({currentExperienceStep}/{state.questionTopics.length})
-    </div>
-    <p className="description-text">아래에서 자소서에 넣을 경험을 선택하세요 ({state.questionTopics[currentExperienceStep - 1]}용)</p>
-    {state.selectedExperiences.length === 0 ? (
-      <div className="empty-state">
-        <p>경험을 찾지 못했습니다. 다시 분석해볼까요?</p>
-        <button
-          className="button-primary"
-          onClick={() => handleDirectionSuggestion(state.resumeId, state.analysisId)}
-          disabled={state.loading}
-        >
-          <GlassIcon type="sparkle" size={20} style={{ marginRight: '8px' }} />
-          <span>경험 제안 받기</span>
-        </button>
-      </div>
-    ) : (
-      <div className="card-grid">
-        {state.selectedExperiences
-          .filter(exp => exp.topic === state.questionTopics[currentExperienceStep - 1])
-          .map((exp, index) => (
-            <div
-              key={index}
-              className={`card experience-card ${state.selectedExperiencesIndices[currentExperienceStep - 1] === exp.index ? 'selected' : ''}`}
-              onClick={() => handleScenarioSelect(index)}
-            >
-              {/* 기본 정보 */}
-              <p className="card-title">{exp.company}</p>
-              <p className="card-description">{exp.description}</p>
-           
-              {/* 주제 및 역량 */}
-              <div className="card-section">
-                <h4>매칭 정보</h4>
-                <p><strong>주제:</strong> {exp.topic}</p>
-                <p><strong>인재상:</strong> {exp.talentProfile || '분석 중...'}</p>
-                <p><strong>핵심역량:</strong> {exp.competency}</p>
-              </div>
-           
-              {/* 핵심: whySelected 분석 결과 - 3-Way 분석 구조 */}
-              <div className="card-section">
-                <h4>딥글 분석 결과</h4>
-                <p><strong>주제-경험:</strong> {exp.whySelected?.["주제-경험"] || '주제 연결성 분석 필요'}</p>
-                <p><strong>인재상-역량-경험:</strong> {exp.whySelected?.["인재상-역량-경험"] || exp.whySelected?.["역량-경험"] || '역량 증명 분석 필요'}</p>
-                <p><strong>회사-경험:</strong> {exp.whySelected?.["회사-경험"] || '회사 연결성 분석 필요'}</p>
-              </div>
+      {screen === 'direction-selection' && (
+        <div className="screen-container">
+          <h2>구체화 방향성 선택</h2>
+          <div className="topic-indicator">
+            현재 주제: {state.questionTopics[currentExperienceStep - 1]} ({currentExperienceStep}/{state.questionTopics.length})
+          </div>
+          <p className="description-text">
+            아래에서 자소서에 넣을 경험을 선택하세요 ({state.questionTopics[currentExperienceStep - 1]}용)
+          </p>
 
-              {/* 통합분석 섹션 - integratedAnalysis 필드 사용 */}
-              <div className="card-section">
-                <h4>통합분석</h4>
-                <p>{exp.integratedAnalysis || '통합 분석 생성 중...'}</p>
-              </div>
-
-              {/* 출처 정보 */}
-              {state.source && state.source.length > 0 && (
-                <div className="card-section">
-                  <h4>분석 출처</h4>
-                  <p>{state.source.filter(s => s !== 'Enhanced Perplexity 검색').slice(0, 2).join(', ') || 'Perplexity 검색 기반'}</p>
-                </div>
-              )}
+          {state.selectedExperiences.length === 0 ? (
+            <div className="empty-state">
+              <p>경험을 찾지 못했습니다. 다시 분석해볼까요?</p>
+              <button
+                className="button-primary"
+                onClick={() => handleDirectionSuggestion(state.resumeId, state.analysisId)}
+                disabled={state.loading}
+              >
+                <GlassIcon type="sparkle" size={20} style={{ marginRight: '8px' }} />
+                <span>경험 제안 받기</span>
+              </button>
             </div>
-          ))}
-      </div>
-    )}
-    <div className="action-buttons" style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
-      <button
-        className="button-primary"
-        onClick={handleStartExtraction}
-        disabled={state.loading || state.selectedExperiencesIndices[currentExperienceStep - 1] === undefined}
-      >
-        <GlassIcon type="write" size={20} style={{ marginRight: '8px' }} />
-        <span>경험 구체화하러 가기</span>
-      </button>
-    </div>
-    {state.loading && <LoadingModal message={currentMessage} />}
-  </div>
-)}
+          ) : (
+            <div className="card-grid">
+              {state.selectedExperiences
+                .filter((exp) => exp.topic === state.questionTopics[currentExperienceStep - 1])
+                .map((exp, index) => (
+                  <div
+                    key={index}
+                    className={`card experience-card ${
+                      state.selectedExperiencesIndices[currentExperienceStep - 1] === exp.index ? 'selected' : ''
+                    }`}
+                    onClick={() => handleScenarioSelect(index)}
+                  >
+                    {/* 기본 정보 */}
+                    <p className="card-title">{exp.company}</p>
+                    <p className="card-description">{exp.description}</p>
 
+                    {/* 주제 및 역량 */}
+                    <div className="card-section">
+                      <h4>매칭 정보</h4>
+                      <p>
+                        <strong>주제:</strong> {exp.topic}
+                      </p>
+                      <p>
+                        <strong>인재상:</strong> {exp.talentProfile || '분석 중...'}
+                      </p>
+                      <p>
+                        <strong>핵심역량:</strong> {exp.competency}
+                      </p>
+                    </div>
+
+                    {/* 핵심: whySelected 분석 결과 - 3-Way 분석 구조 */}
+                    <div className="card-section">
+                      <h4>딥글 분석 결과</h4>
+                      <p>
+                        <strong>주제-경험:</strong> {exp.whySelected?.['주제-경험'] || '주제 연결성 분석 필요'}
+                      </p>
+                      <p>
+                        <strong>인재상-역량-경험:</strong>{' '}
+                        {exp.whySelected?.['인재상-역량-경험'] ||
+                          exp.whySelected?.['역량-경험'] ||
+                          '역량 증명 분석 필요'}
+                      </p>
+                      <p>
+                        <strong>회사-경험:</strong> {exp.whySelected?.['회사-경험'] || '회사 연결성 분석 필요'}
+                      </p>
+                    </div>
+
+                    {/* 통합분석 섹션 - integratedAnalysis 필드 사용 */}
+                    <div className="card-section">
+                      <h4>통합분석</h4>
+                      <p>{exp.integratedAnalysis || '통합 분석 생성 중...'}</p>
+                    </div>
+
+                    {/* 출처 정보 */}
+                    {state.source && state.source.length > 0 && (
+                      <div className="card-section">
+                        <h4>분석 출처</h4>
+                        <p>
+                          {state.source.filter((s) => s !== 'Enhanced Perplexity 검색').slice(0, 2).join(', ') ||
+                            'Perplexity 검색 기반'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </div>
+          )}
+
+          <div className="action-buttons" style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
+            <button
+              className="button-primary"
+              onClick={handleStartExtraction}
+              disabled={state.loading || state.selectedExperiencesIndices[currentExperienceStep - 1] === undefined}
+            >
+              <GlassIcon type="write" size={20} style={{ marginRight: '8px' }} />
+              <span>경험 구체화하러 가기</span>
+            </button>
+          </div>
+
+          {state.loading && <LoadingModal message={currentMessage} />}
+        </div>
+      )}
 
       {/* Experience Extraction (Chat) - Focus Mode 수정 */}
       {screen === 'experience-extraction' && (
@@ -3642,18 +4012,21 @@ return (
           }}
         >
           {/* 플로팅 주제 배지 */}
-          <div style={{
-            position: 'absolute',
-            top: '20px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 10
-          }}>
+          <div
+            style={{
+              position: 'absolute',
+              top: '20px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 10
+            }}
+          >
             <div className="topic-indicator">
-              현재 주제: {state.questionTopics[currentExperienceStep - 1]} ({currentExperienceStep}/{state.questionTopics.length})
+              현재 주제: {state.questionTopics[currentExperienceStep - 1]} ({currentExperienceStep}/
+              {state.questionTopics.length})
             </div>
           </div>
-       
+
           {/* Focus Mode 대화 영역 - 수정된 부분 */}
           <div
             style={{
@@ -3661,7 +4034,7 @@ return (
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              paddingTop: '120px',  // 80px → 120px로 변경
+              paddingTop: '120px',
               paddingBottom: '24px',
               position: 'relative'
             }}
@@ -3679,16 +4052,10 @@ return (
               }}
             >
               {/* 딥글 로고 - transform 제거 */}
-              <div 
-                className={state.chatLoading ? "typing-logo" : ""}
-                style={{ 
-                  position: 'relative'
-                }}
-              >
+              <div className={state.chatLoading ? 'typing-logo' : ''} style={{ position: 'relative' }}>
                 <DeepGlLogo size={120} />
                 {state.chatLoading && (
                   <>
-                    {/* 첫 번째 파동 링 */}
                     <div
                       style={{
                         position: 'absolute',
@@ -3703,7 +4070,6 @@ return (
                         pointerEvents: 'none'
                       }}
                     />
-                    {/* 두 번째 파동 링 */}
                     <div
                       style={{
                         position: 'absolute',
@@ -3719,7 +4085,6 @@ return (
                         pointerEvents: 'none'
                       }}
                     />
-                    {/* 세 번째 파동 링 */}
                     <div
                       style={{
                         position: 'absolute',
@@ -3751,7 +4116,6 @@ return (
                           opacity: 0;
                         }
                       }
-                      
                       @keyframes pulseRing2 {
                         0% {
                           width: 120px;
@@ -3767,7 +4131,6 @@ return (
                           opacity: 0;
                         }
                       }
-
                       @keyframes pulseRing3 {
                         0% {
                           width: 120px;
@@ -3787,82 +4150,80 @@ return (
                   </>
                 )}
               </div>
+
               {/* 현재 질문 표시 - 배경 제거 */}
-{!state.chatLoading && chatHistory.length > 0 && (
-  <div
-    style={{
-      position: 'relative',
-      width: '100%',
-      maxWidth: '600px',
-      transform: 'translateX(0)',
-      animation: 'slideInFromLeft 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s both'
-    }}
-  >
-    <div
-      className="focus-question-bubble"
-      style={{
-        padding: '20px 24px',
-        fontSize: '17px',
-        lineHeight: '1.6',
-        color: '#1D1D1F',
-        position: 'relative'
-      }}
-    >
-             
-                    {/* 질문 텍스트와 인라인 힌트 아이콘 */}
+              {!state.chatLoading && chatHistory.length > 0 && (
+                <div
+                  style={{
+                    position: 'relative',
+                    width: '100%',
+                    maxWidth: '600px',
+                    transform: 'translateX(0)',
+                    animation: 'slideInFromLeft 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s both'
+                  }}
+                >
+                  <div
+                    className="focus-question-bubble"
+                    style={{
+                      padding: '20px 24px',
+                      fontSize: '17px',
+                      lineHeight: '1.6',
+                      color: '#1D1D1F',
+                      position: 'relative'
+                    }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexWrap: 'wrap' }}>
                       <span style={{ flex: 1 }}>
-                        {showHintInBubble && chatHistory[chatHistory.length - 1].hint ? 
-                          chatHistory[chatHistory.length - 1].hint : 
-                          chatHistory[chatHistory.length - 1].message}
+                        {showHintInBubble && chatHistory[chatHistory.length - 1].hint
+                          ? chatHistory[chatHistory.length - 1].hint
+                          : chatHistory[chatHistory.length - 1].message}
                       </span>
-                      
-                      {/* 힌트 아이콘 - 텍스트 끝에 인라인 */}
-                      {chatHistory[chatHistory.length - 1].sender === '딥글' && 
-                       chatHistory[chatHistory.length - 1].hint && (
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowHintInBubble(!showHintInBubble);
-                          }}
-                          style={{
-                            width: '24px',
-                            height: '24px',
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            background: showHintInBubble 
-                              ? 'linear-gradient(135deg, rgba(74, 85, 104, 0.15), rgba(74, 85, 104, 0.1))'
-                              : 'linear-gradient(135deg, rgba(74, 85, 104, 0.08), rgba(74, 85, 104, 0.05))',
-                            backdropFilter: 'blur(10px)',
-                            WebkitBackdropFilter: 'blur(10px)',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            borderRadius: '50%',
-                            transition: 'all 0.2s ease',
-                            marginTop: '2px'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.1)';
-                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(74, 85, 104, 0.2)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'scale(1)';
-                            e.currentTarget.style.boxShadow = 'none';
-                          }}
-                        >
-                          <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="none"
+
+                      {chatHistory[chatHistory.length - 1].sender === '딥글' &&
+                        chatHistory[chatHistory.length - 1].hint && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowHintInBubble(!showHintInBubble);
+                            }}
+                            style={{
+                              width: '24px',
+                              height: '24px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              background: showHintInBubble
+                                ? 'linear-gradient(135deg, rgba(74, 85, 104, 0.15), rgba(74, 85, 104, 0.1))'
+                                : 'linear-gradient(135deg, rgba(74, 85, 104, 0.08), rgba(74, 85, 104, 0.05))',
+                              backdropFilter: 'blur(10px)',
+                              WebkitBackdropFilter: 'blur(10px)',
+                              border: '1px solid rgba(255, 255, 255, 0.2)',
+                              borderRadius: '50%',
+                              transition: 'all 0.2s ease',
+                              marginTop: '2px'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'scale(1.1)';
+                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(74, 85, 104, 0.2)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)';
+                              e.currentTarget.style.boxShadow = 'none';
+                            }}
                           >
-                            <circle cx="12" cy="12" r="9" stroke="rgba(74, 85, 104, 0.6)" strokeWidth="2"/>
-                            <path d="M12 17v-1m0-4v-4" stroke="rgba(74, 85, 104, 0.6)" strokeWidth="2" strokeLinecap="round"/>
-                            <circle cx="12" cy="18" r="0.5" fill="rgba(74, 85, 104, 0.6)"/>
-                          </svg>
-                        </div>
-                      )}
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                              <circle cx="12" cy="12" r="9" stroke="rgba(74, 85, 104, 0.6)" strokeWidth="2" />
+                              <path
+                                d="M12 17v-1m0-4v-4"
+                                stroke="rgba(74, 85, 104, 0.6)"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                              />
+                              <circle cx="12" cy="18" r="0.5" fill="rgba(74, 85, 104, 0.6)" />
+                            </svg>
+                          </div>
+                        )}
                     </div>
                   </div>
                   <style jsx>{`
@@ -3879,8 +4240,8 @@ return (
                   `}</style>
                 </div>
               )}
-              
-              {/* 답변 입력 영역 - 입력창 버그 수정 */}
+
+              {/* 답변 입력 영역 */}
               {chatHistory.length > 0 && (
                 <div
                   style={{
@@ -3928,13 +4289,14 @@ return (
                       height: '48px',
                       borderRadius: '50%',
                       border: 'none',
-                      background: state.chatLoading || !currentAnswer.trim()
-                        ? '#E5E5EA'
-                        : 'linear-gradient(135deg, rgba(74, 85, 104, 0.9), rgba(74, 85, 104, 0.8))',
+                      background:
+                        state.chatLoading || !currentAnswer.trim()
+                          ? '#E5E5EA'
+                          : 'linear-gradient(135deg, rgba(74, 85, 104, 0.9), rgba(74, 85, 104, 0.8))',
                       backdropFilter: 'blur(10px)',
                       WebkitBackdropFilter: 'blur(10px)',
                       color: 'white',
-                      cursor: (state.chatLoading || !currentAnswer.trim() || isSubmitting) ? 'not-allowed' : 'pointer',
+                      cursor: state.chatLoading || !currentAnswer.trim() || isSubmitting ? 'not-allowed' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -3948,8 +4310,8 @@ return (
                 </div>
               )}
             </div>
-            
-            {/* Progress dots - 하단 중앙 */}
+
+            {/* Progress dots */}
             <div
               style={{
                 position: 'absolute',
@@ -3975,6 +4337,7 @@ return (
               ))}
             </div>
           </div>
+
           {state.loading && <LoadingModal message={currentMessage} />}
         </div>
       )}
@@ -4012,29 +4375,17 @@ return (
                   <GlassIcon type="write" size={20} style={{ marginRight: '8px' }} />
                   <span>{`${state.questionTopics[currentExperienceStep]} 경험 구체화 하러 가기`}</span>
                 </button>
-                <button
-                  className="button-secondary"
-                  onClick={() => goToExperienceExtraction()}
-                  disabled={state.loading}
-                >
+                <button className="button-secondary" onClick={() => goToExperienceExtraction()} disabled={state.loading}>
                   뒤로 가기
                 </button>
               </>
             ) : (
               <>
-                <button
-                  className="button-primary"
-                  onClick={handlePlanRequest}
-                  disabled={state.loading}
-                >
+                <button className="button-primary" onClick={handlePlanRequest} disabled={state.loading}>
                   <GlassIcon type="document" size={20} style={{ marginRight: '8px' }} />
                   <span>계획표 만들러 가기</span>
                 </button>
-                <button
-                  className="button-secondary"
-                  onClick={() => goToExperienceExtraction()}
-                  disabled={state.loading}
-                >
+                <button className="button-secondary" onClick={() => goToExperienceExtraction()} disabled={state.loading}>
                   뒤로 가기
                 </button>
               </>
@@ -4048,14 +4399,22 @@ return (
       {screen === 'plan-view' && (
         <div className="screen-container">
           <h2>자소서 계획서</h2>
-          <p className="description-text">지금까지 경험 {state.questionTopics.length}개를 구체화했습니다. 아래 계획서를 확인하고 자소서를 생성해보세요.</p>
+          <p className="description-text">
+            지금까지 경험 {state.questionTopics.length}개를 구체화했습니다. 아래 계획서를 확인하고 자소서를 생성해보세요.
+          </p>
           {state.plan ? (
             <>
               <div className="plan-container">{renderPlanTable(state.plan, true)}</div>
               {state.source && state.source.length > 0 && (
                 <div className="source-links">
                   {state.source.map((url, index) => (
-                    <a key={index} href={url.startsWith('http') ? url : '#'} target="_blank" rel="noopener noreferrer" className="source-link">
+                    <a
+                      key={index}
+                      href={url.startsWith('http') ? url : '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="source-link"
+                    >
                       {url === '사용자 이력서' ? '사용자 이력서' : `출처 ${index + 1}`}
                     </a>
                   ))}
@@ -4078,21 +4437,23 @@ return (
         </div>
       )}
 
-      {/* Cover Letter View - ✅ 수정됨 */}
+      {/* Cover Letter View - ✅ 수정됨 (가이드 반영 + 팝업 컴포넌트명 변경) */}
       {screen === 'cover-letter-view' && (
         <div className="screen-container">
           <h2>{isProofreadingComplete ? '첨삭된 자소서' : '생성된 자소서'}</h2>
           <p className="description-text">
-            {isProofreadingComplete 
-              ? '첨삭이 완료되었습니다. 문단을 클릭해서 직접 수정해보세요.' 
+            {isProofreadingComplete
+              ? '첨삭이 완료되었습니다. 문단을 클릭해서 직접 수정하거나, 느낌표 아이콘을 눌러 수정 내용을 확인하세요.'
               : '딥글이 자소서를 완성했습니다. 문단을 클릭하여 수정하거나 첨삭을 진행해 주세요.'}
           </p>
+
           <div className="cover-letter-container">
             {state.coverLetterParagraphs.length > 0 ? (
               state.coverLetterParagraphs.map((paragraph, index) => (
                 <section
                   key={paragraph.id}
                   className="card paragraph-card"
+                  style={{ position: 'relative' }}
                   onClick={() => {
                     setCurrentParagraphId(paragraph.id);
                     setEditedParagraphText(paragraph.text);
@@ -4100,30 +4461,98 @@ return (
                   }}
                 >
                   <h3 className="paragraph-title">문단 {index + 1}</h3>
-                  {paragraph.text.split('\n').filter(line => line.trim()).map((line, lineIndex) => (
-                    <p key={lineIndex} className="paragraph-text">
-                      {line}
-                    </p>
-                  ))}
-                  {/* ✅ 첨삭 완료 시 글자수 변화 표시 */}
+
+                  {paragraph.text
+                    .split('\n')
+                    .filter((line) => line.trim())
+                    .map((line, lineIndex) => (
+                      <p key={lineIndex} className="paragraph-text">
+                        {line}
+                      </p>
+                    ))}
+
                   {isProofreadingComplete && paragraph.originalCharCount && paragraph.editedCharCount && (
-                    <p style={{ 
-                      fontSize: '12px', 
-                      color: '#86868B', 
-                      marginTop: '8px',
-                      textAlign: 'right'
-                    }}>
+                    <p
+                      style={{
+                        fontSize: '12px',
+                        color: '#86868B',
+                        marginTop: '8px',
+                        textAlign: 'right'
+                      }}
+                    >
                       {paragraph.originalCharCount}자 → {paragraph.editedCharCount}자
                     </p>
                   )}
+
+                  {/* 🔥 NEW: 첨삭 완료 시 수정 내용 보기 아이콘 */}
+                  {isProofreadingComplete &&
+                    paragraph.editInstructions &&
+                    paragraph.editInstructions.length > 0 && (
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowEditInfoPopup({
+                            paragraphId: paragraph.id,
+                            editInstructions: paragraph.editInstructions
+                          });
+                        }}
+                        style={{
+                          position: 'absolute',
+                          bottom: '12px',
+                          right: '12px',
+                          width: '24px',
+                          height: '24px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: '#F3F4F6',
+                          borderRadius: '50%',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          border: '1px solid #E5E7EB'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#E5E7EB';
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = '#F3F4F6';
+                          e.currentTarget.style.transform = 'scale(1)';
+                        }}
+                        title="수정 내용 보기"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" stroke="#9CA3AF" strokeWidth="2" />
+                          <line
+                            x1="12"
+                            y1="8"
+                            x2="12"
+                            y2="12"
+                            stroke="#9CA3AF"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                          />
+                          <circle cx="12" cy="16" r="1" fill="#9CA3AF" />
+                        </svg>
+                      </div>
+                    )}
                 </section>
               ))
             ) : (
               <p className="empty-state">자소서 문단이 없습니다. 다시 생성해 주세요.</p>
             )}
           </div>
+
+          {/* 🔥 NEW: 수정 내용 팝업 (컴포넌트명 변경 버전) */}
+          {showEditInfoPopup && (
+            <ParagraphEditInfoPopup
+              paragraphId={showEditInfoPopup.paragraphId}
+              editInstructions={showEditInfoPopup.editInstructions}
+              onClose={() => setShowEditInfoPopup(null)}
+            />
+          )}
+
           <div className="action-buttons">
-            {/* ✅ 첨삭 전에만 첨삭 버튼 표시 */}
             {!isProofreadingComplete && (
               <button
                 className="button-primary"
@@ -4134,25 +4563,19 @@ return (
                 <span>자소서 확정하고 첨삭받기</span>
               </button>
             )}
-            {/* ✅ 첨삭 후에만 완성버전 보기 버튼 표시 */}
+
             {isProofreadingComplete && (
-              <button
-                className="button-primary"
-                onClick={handleCompleteCoverLetter}
-                disabled={state.loading}
-              >
+              <button className="button-primary" onClick={handleCompleteCoverLetter} disabled={state.loading}>
                 <GlassIcon type="check" size={20} style={{ marginRight: '8px' }} />
                 <span>자소서 완성버전 보러가기</span>
               </button>
             )}
-            <button
-              className="button-secondary"
-              onClick={goToPlanView}
-              disabled={state.loading}
-            >
+
+            <button className="button-secondary" onClick={goToPlanView} disabled={state.loading}>
               뒤로 가기
             </button>
           </div>
+
           {state.showProofreadingPopup && (
             <>
               <div className="modal-overlay" />
@@ -4171,6 +4594,7 @@ return (
               </div>
             </>
           )}
+
           {state.loading && <LoadingModal message={currentMessage} />}
         </div>
       )}
@@ -4185,26 +4609,35 @@ return (
               <h3>원본 문단</h3>
               <div className="original-text" ref={originalTextRef}>
                 {(() => {
-                  const currentParagraph = state.coverLetterParagraphs.find(p => p.id === currentParagraphId);
+                  const currentParagraph = state.coverLetterParagraphs.find((p) => p.id === currentParagraphId);
                   if (!currentParagraph) {
                     return <p>문단을 찾을 수 없습니다.</p>;
                   }
-                  const lines = currentParagraph.text.split('\n').filter(line => line.trim());
+                  const lines = currentParagraph.text.split('\n').filter((line) => line.trim());
                   if (lines.length === 0) {
                     return <p>문단 내용이 없습니다.</p>;
                   }
-                  const suggestionsForParagraph = state.aiProofreadingSuggestions.length > 0
-                    ? state.aiProofreadingSuggestions.find(s => s.paragraphId === currentParagraphId)?.suggestions || []
-                    : state.aiScreeningSuggestions.find(s => s.paragraphId === currentParagraphId)?.suggestions || [];
-               
+                  const suggestionsForParagraph =
+                    state.aiProofreadingSuggestions.length > 0
+                      ? state.aiProofreadingSuggestions.find((s) => s.paragraphId === currentParagraphId)?.suggestions || []
+                      : state.aiScreeningSuggestions.find((s) => s.paragraphId === currentParagraphId)?.suggestions || [];
+
                   if (suggestionsForParagraph.length === 0) {
-                    return lines.map((line, index) => <p key={index} className="text-line">수정 제안이 없습니다: {line}</p>);
+                    return lines.map((line, index) => (
+                      <p key={index} className="text-line">
+                        수정 제안이 없습니다: {line}
+                      </p>
+                    ));
                   }
+
                   return lines.map((line, index) => {
-                    const matchingSuggestions = suggestionsForParagraph.filter(s =>
-                      s.sentence.trim().replace(/\.+$/, '').toLowerCase() === line.trim().replace(/\.+$/, '').toLowerCase()
+                    const matchingSuggestions = suggestionsForParagraph.filter(
+                      (s) =>
+                        s.sentence.trim().replace(/\.+$/, '').toLowerCase() ===
+                        line.trim().replace(/\.+$/, '').toLowerCase()
                     );
                     const suggestion = matchingSuggestions.length > 0 ? matchingSuggestions[0] : null;
+
                     return (
                       <p
                         key={index}
@@ -4228,6 +4661,7 @@ return (
                 })()}
               </div>
             </div>
+
             <div className="edit-panel">
               <h3>수정 문단</h3>
               <textarea
@@ -4239,6 +4673,7 @@ return (
               />
             </div>
           </div>
+
           <div className="action-buttons">
             <button
               className="button-primary"
@@ -4248,44 +4683,61 @@ return (
               <GlassIcon type="check" size={20} style={{ marginRight: '8px' }} />
               <span>저장하고 다음 문단 수정하기</span>
             </button>
-            <button
-              className="button-secondary"
-              onClick={() => setScreen('cover-letter-view')}
-              disabled={state.loading}
-            >
+            <button className="button-secondary" onClick={() => setScreen('cover-letter-view')} disabled={state.loading}>
               뒤로 가기
             </button>
           </div>
+
           {showAiSuggestionPopup && (
             <>
               <div className="modal-overlay" onClick={() => setShowAiSuggestionPopup(null)} />
               <div className="modal suggestion-modal">
                 <div className="modal-header">
                   <span>{state.aiProofreadingSuggestions.length > 0 ? '첨삭 제안' : 'AI 문체 수정 제안'}</span>
-                  <button className="modal-close" onClick={() => setShowAiSuggestionPopup(null)}>×</button>
+                  <button className="modal-close" onClick={() => setShowAiSuggestionPopup(null)}>
+                    ×
+                  </button>
                 </div>
                 <div className="modal-content">
                   {(() => {
-                    const suggestions = state.aiProofreadingSuggestions.length > 0
-                      ? state.aiProofreadingSuggestions
-                      : state.aiScreeningSuggestions;
+                    const suggestions =
+                      state.aiProofreadingSuggestions.length > 0 ? state.aiProofreadingSuggestions : state.aiScreeningSuggestions;
+
                     const suggestion = suggestions
-                      .find(s => s.paragraphId === showAiSuggestionPopup.paragraphId)?.suggestions
-                      .find(s => s.sentence.trim().replace(/\.+$/, '').toLowerCase() === showAiSuggestionPopup.sentence.trim().replace(/\.+$/, '').toLowerCase());
-                 
+                      .find((s) => s.paragraphId === showAiSuggestionPopup.paragraphId)
+                      ?.suggestions.find(
+                        (s) =>
+                          s.sentence.trim().replace(/\.+$/, '').toLowerCase() ===
+                          showAiSuggestionPopup.sentence.trim().replace(/\.+$/, '').toLowerCase()
+                      );
+
                     return suggestion ? (
                       state.aiProofreadingSuggestions.length > 0 ? (
                         <>
-                          <p><strong>문장:</strong> {suggestion.sentence}</p>
-                          <p><strong>카테고리:</strong> {suggestion.category}</p>
-                          <p><strong>문제:</strong> {suggestion.issue}</p>
-                          <p><strong>제안:</strong> {suggestion.suggestion}</p>
+                          <p>
+                            <strong>문장:</strong> {suggestion.sentence}
+                          </p>
+                          <p>
+                            <strong>카테고리:</strong> {suggestion.category}
+                          </p>
+                          <p>
+                            <strong>문제:</strong> {suggestion.issue}
+                          </p>
+                          <p>
+                            <strong>제안:</strong> {suggestion.suggestion}
+                          </p>
                         </>
                       ) : (
                         <>
-                          <p><strong>문장:</strong> {suggestion.sentence}</p>
-                          <p><strong>문제점:</strong> {suggestion.reason}</p>
-                          <p><strong>수정 제안:</strong> {suggestion.proposal}</p>
+                          <p>
+                            <strong>문장:</strong> {suggestion.sentence}
+                          </p>
+                          <p>
+                            <strong>문제점:</strong> {suggestion.reason}
+                          </p>
+                          <p>
+                            <strong>수정 제안:</strong> {suggestion.proposal}
+                          </p>
                         </>
                       )
                     ) : (
@@ -4296,6 +4748,7 @@ return (
               </div>
             </>
           )}
+
           {state.loading && <LoadingModal message={currentMessage} />}
         </div>
       )}
@@ -4309,7 +4762,9 @@ return (
             {state.coverLetterText ? (
               <div className="final-letter-content">
                 {state.coverLetterText.split('\n').map((line, index) => (
-                  <p key={index} className="paragraph-text">{line}</p>
+                  <p key={index} className="paragraph-text">
+                    {line}
+                  </p>
                 ))}
               </div>
             ) : (
@@ -4317,11 +4772,7 @@ return (
             )}
           </div>
           <div className="action-buttons">
-            <button
-              className="button-secondary"
-              onClick={() => setScreen('cover-letter-view')}
-              disabled={state.loading}
-            >
+            <button className="button-secondary" onClick={() => setScreen('cover-letter-view')} disabled={state.loading}>
               뒤로 가기
             </button>
           </div>
@@ -4329,7 +4780,7 @@ return (
         </div>
       )}
     </div>
-    
+
     {/* CSS 애니메이션 */}
     <style jsx>{`
       @keyframes loadingPulse1 {
@@ -4347,7 +4798,7 @@ return (
           opacity: 0;
         }
       }
-      
+
       @keyframes loadingPulse2 {
         0% {
           width: 80px;
@@ -4390,7 +4841,7 @@ return (
           backdrop-filter: blur(4px);
         }
       }
-     
+
       @keyframes liquidFloat {
         0% {
           transform: translateY(20px) scale(0.8);
@@ -4404,9 +4855,10 @@ return (
           opacity: 1;
         }
       }
-     
+
       @keyframes liquidMove {
-        0%, 100% {
+        0%,
+        100% {
           transform: translate(-50%, -50%) rotate(0deg);
         }
         33% {
@@ -4416,7 +4868,7 @@ return (
           transform: translate(-70%, -40%) rotate(240deg);
         }
       }
-     
+
       @keyframes liquidRotate {
         from {
           transform: rotate(0deg);
@@ -4425,7 +4877,7 @@ return (
           transform: rotate(360deg);
         }
       }
-     
+
       @keyframes fadeIn {
         from {
           opacity: 0;
@@ -4434,7 +4886,7 @@ return (
           opacity: 1;
         }
       }
-     
+
       @keyframes rotate {
         from {
           transform: rotate(0deg);
@@ -4443,7 +4895,7 @@ return (
           transform: rotate(360deg);
         }
       }
-     
+
       @keyframes liquidSlide {
         0% {
           transform: translate(-50%, -60%) scale(0.8);
@@ -4459,7 +4911,7 @@ return (
           border-radius: var(--radius-xl);
         }
       }
-     
+
       @keyframes messageSlide {
         from {
           transform: translateY(10px);
@@ -4470,7 +4922,7 @@ return (
           opacity: 1;
         }
       }
-     
+
       @keyframes fadeInUp {
         from {
           opacity: 0;
@@ -4481,7 +4933,7 @@ return (
           transform: translateY(0);
         }
       }
-     
+
       /* 인트로 애니메이션 */
       @keyframes rollInLeft {
         from {
@@ -4493,7 +4945,7 @@ return (
           opacity: 1;
         }
       }
-     
+
       @keyframes rollInRight {
         from {
           transform: translateX(100vw) rotate(1440deg);
@@ -4504,14 +4956,14 @@ return (
           opacity: 1;
         }
       }
-     
+
       @keyframes mergeToCenter {
         to {
           transform: translateX(0) translateY(0) scale(1);
           opacity: 0;
         }
       }
-     
+
       @keyframes fadeInScale {
         from {
           opacity: 0;
@@ -4522,16 +4974,17 @@ return (
           transform: scale(1);
         }
       }
-     
+
       @keyframes glow {
-        0%, 100% {
+        0%,
+        100% {
           filter: drop-shadow(0 0 20px rgba(107, 114, 128, 0.4));
         }
         50% {
           filter: drop-shadow(0 0 40px rgba(107, 114, 128, 0.6));
         }
       }
-     
+
       @keyframes letterFadeIn {
         from {
           opacity: 0;
@@ -4542,7 +4995,7 @@ return (
           transform: translateY(0) rotateX(0);
         }
       }
-     
+
       @keyframes slideUpFadeIn {
         from {
           opacity: 0;
@@ -4553,7 +5006,7 @@ return (
           transform: translateY(0);
         }
       }
-     
+
       /* 두뇌 애니메이션 */
       @keyframes crossFadeIn {
         from {
@@ -4565,71 +5018,68 @@ return (
           transform: scale(1);
         }
       }
-     
+
       /* 애니메이션 클래스 */
       .hidden {
         opacity: 0;
         visibility: hidden;
       }
-     
+
       .roll-in-left {
         animation: rollInLeft 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
       }
-     
+
       .roll-in-right {
         animation: rollInRight 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
       }
-     
+
       .brain-left-roll {
         animation: rollInLeft 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
       }
-     
+
       .brain-right-roll {
         animation: rollInRight 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
       }
-     
+
       .brain-merge {
         animation: mergeToCenter 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
       }
-     
+
       .cross-fade-in {
         animation: crossFadeIn 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
       }
-     
+
       .merge-to-center {
         animation: mergeToCenter 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s forwards;
       }
-     
+
       .fade-in-scale {
         animation: fadeInScale 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
       }
-     
+
       .letter-fade-in {
         animation: letterFadeIn 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
       }
-     
-      /* 기존 애니메이션 유지 */
+
       .hint-icon-container:hover {
         transform: scale(1.1);
         box-shadow: 0 12px 40px rgba(74, 85, 104, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
       }
-     
+
       .hint-icon-container:hover .hint-icon-glow {
         opacity: 1;
       }
-     
+
       .hint-icon-container:active {
         transform: scale(0.95);
       }
-     
-      /* 버튼 호버 효과 강화 */
+
       .button-primary:hover,
       .button-secondary:hover {
         backdrop-filter: blur(25px);
         -webkit-backdrop-filter: blur(25px);
       }
-     
-      /* 카드 호버 효과 */
+
       .card:hover {
         backdrop-filter: blur(30px);
         -webkit-backdrop-filter: blur(30px);
@@ -4640,4 +5090,4 @@ return (
 }
 
 export default App;
-// End of Section 3//
+// End of Section 3
