@@ -1,3 +1,4 @@
+// DEPLOY TEST 20260109
 /// Section 1: Initial Setup and State Management for App.js (딥글 글래스모피즘 버전)
 // This section includes imports, initial state, reducer, and state declarations
 // Attach this section first when reconstructing App.js
