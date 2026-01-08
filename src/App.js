@@ -902,7 +902,7 @@ function App() {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000);
-      const response = await fetch('https://https://youngsun-xi.vercel.app/pre-analyze', {
+      const response = await fetch('https://youngsun-xi.vercel.app/pre-analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
