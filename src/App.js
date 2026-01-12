@@ -5,6 +5,109 @@
 import React, { useState, useReducer, useRef, useEffect } from 'react';
 import './App.css';
 
+// ============================================
+// ✅ 한국어 조사 처리 유틸리티
+// ============================================
+
+/**
+ * 한글 문자의 받침(종성) 유무를 확인
+ * @param {string} word - 검사할 단어
+ * @returns {boolean} - 마지막 글자에 받침이 있으면 true
+ */
+const hasFinalConsonant = (word) => {
+  if (!word || typeof word !== 'string') return false;
+  const lastChar = word[word.length - 1];
+  const code = lastChar.charCodeAt(0);
+  
+  // 한글 유니코드 범위: 0xAC00 ~ 0xD7A3
+  if (code < 0xAC00 || code > 0xD7A3) return false;
+  
+  // 받침 여부: (코드 - 0xAC00) % 28 === 0 이면 받침 없음
+  return (code - 0xAC00) % 28 !== 0;
+};
+
+/**
+ * 단어에 맞는 조사를 반환
+ * @param {string} word - 단어
+ * @param {string} particleType - 조사 타입: '이/가', '은/는', '을/를', '와/과', '로/으로'
+ * @returns {string} - 적절한 조사
+ */
+const getParticle = (word, particleType) => {
+  const hasBatchim = hasFinalConsonant(word);
+  
+  const particles = {
+    '이/가': hasBatchim ? '이' : '가',
+    '은/는': hasBatchim ? '은' : '는',
+    '을/를': hasBatchim ? '을' : '를',
+    '와/과': hasBatchim ? '과' : '와',
+    '로/으로': hasBatchim ? '으로' : '로',
+  };
+  
+  return particles[particleType] || '';
+};
+
+// ============================================
+// ✅ 브라우저 알림 유틸리티
+// ============================================
+
+/**
+ * 알림 권한 요청
+ * @returns {Promise<string>} - 'granted', 'denied', 'default'
+ */
+const requestNotificationPermission = async () => {
+  if (!('Notification' in window)) {
+    console.log('이 브라우저는 알림을 지원하지 않습니다.');
+    return 'denied';
+  }
+  
+  if (Notification.permission === 'granted') {
+    return 'granted';
+  }
+  
+  if (Notification.permission !== 'denied') {
+    const permission = await Notification.requestPermission();
+    return permission;
+  }
+  
+  return Notification.permission;
+};
+
+/**
+ * 브라우저 알림 발송
+ * @param {string} title - 알림 제목
+ * @param {string} body - 알림 내용
+ */
+const sendNotification = (title, body) => {
+  // 1. 탭 타이틀 변경 (권한 없어도 동작)
+  const originalTitle = document.title;
+  document.title = `✅ ${title}`;
+  
+  setTimeout(() => {
+    document.title = originalTitle;
+  }, 5000);
+  
+  // 2. 브라우저 알림 (권한 있을 때만)
+  if ('Notification' in window && Notification.permission === 'granted') {
+    const notification = new Notification(title, {
+      body: body,
+      icon: '/logo192.png',
+      badge: '/logo192.png',
+      tag: 'deepgl-notification',
+      requireInteraction: false,
+    });
+    
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
+    
+    // 5초 후 자동 닫기
+    setTimeout(() => {
+      notification.close();
+    }, 5000);
+  }
+};
+
 // 반원 + 십자가 로고 컴포넌트 (개선된 버전)
 const BrainCrossLogo = ({ size = 150, showCross = true }) => {
   return (
@@ -658,13 +761,13 @@ const DeepglWordmark = () => (
   </div>
 );
 
-// ✅ 동적 로딩 메시지 시스템 (엔드포인트별 interval 포함)
+// ✅ 동적 로딩 메시지 시스템 (엔드포인트별 interval 포함) - 조사 플레이스홀더 추가
 const LOADING_STAGES = {
   'pre-analyze': {
     messages: [
       '{company}의 채용 공고 정보 수집 중...',
       '{company}의 직무 요구사항 분석 중...',
-      '{company}가 원하는 인재상 파악 중...',
+      '{company}{이/가} 원하는 인재상 파악 중...',
       'Perplexity AI로 최신 트렌드 검색 중...',
       '{company}에 필요한 핵심 역량 도출 중...'
     ],
@@ -711,7 +814,7 @@ const LOADING_STAGES = {
       '에피소드 활용 전략 수립 중...',
       '문단별 역할 배분 중...',
       'Master Instructions 생성 중...',
-      '{company} 연결성 전략 최적화 중...'
+      '{company}{와/과}의 연결성 전략 최적화 중...'
     ],
     interval: 30000
   },
@@ -737,16 +840,34 @@ const LOADING_STAGES = {
   }
 };
 
-// ✅ 동적 로딩 메시지 커스텀 훅
+// ✅ 동적 로딩 메시지 커스텀 훅 - 조사 처리 추가
 const useLoadingMessage = () => {
   const [currentMessage, setCurrentMessage] = useState('');
   const timerRef = useRef(null);
   const stageIndexRef = useRef(0);
 
+  // 조사 플레이스홀더를 실제 조사로 변환
   const formatMessage = (template, context) => {
-    return template
-      .replace('{company}', context.company || '회사')
-      .replace('{topic}', context.topic || '주제');
+    let result = template;
+    
+    // {company} 치환
+    if (context.company) {
+      result = result.replace(/{company}/g, context.company);
+      
+      // 조사 치환
+      result = result.replace(/{이\/가}/g, getParticle(context.company, '이/가'));
+      result = result.replace(/{은\/는}/g, getParticle(context.company, '은/는'));
+      result = result.replace(/{을\/를}/g, getParticle(context.company, '을/를'));
+      result = result.replace(/{와\/과}/g, getParticle(context.company, '와/과'));
+      result = result.replace(/{로\/으로}/g, getParticle(context.company, '로/으로'));
+    }
+    
+    // {topic} 치환
+    if (context.topic) {
+      result = result.replace(/{topic}/g, context.topic);
+    }
+    
+    return result;
   };
 
   const startLoading = (endpoint, context = {}) => {
@@ -883,7 +1004,7 @@ function App() {
     goToAnalysis();
   };
 
-  // ✅ 수정: handlePreAnalysisSubmit
+  // ✅ 수정: handlePreAnalysisSubmit - 알림 권한 요청 및 완료 알림 추가
   const handlePreAnalysisSubmit = async (e) => {
     e.preventDefault();
     if (
@@ -897,13 +1018,16 @@ function App() {
       return;
     }
     
+    // ✅ 알림 권한 요청 (첫 분석 시)
+    await requestNotificationPermission();
+    
     startLoading('pre-analyze', { company: state.companyInfo.company });
     dispatch({ type: 'SET_LOADING', loading: true, message: '' });
     
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000);
-      const response = await fetch('https://youngsun-xi.vercel.app/pre-analyze', {
+      const response = await fetch('https://youngsun-xi.vercel.app /pre-analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -928,6 +1052,13 @@ function App() {
           preCompetencies: data.competencies,
           questionTopics: data.questionTopics
         });
+        
+        // ✅ 완료 알림 발송
+        sendNotification(
+          '딥글 사전 분석 완료',
+          `${state.companyInfo.company} 사전 분석이 완료되었습니다. 이력서를 업로드해주세요.`
+        );
+        
         goToPreAnalysisReview();
       }
     } catch (error) {
@@ -938,7 +1069,7 @@ function App() {
     dispatch({ type: 'SET_LOADING', loading: false, message: '' });
   };
 
-  // ✅ 수정: handleAnalysisSubmit
+  // ✅ 수정: handleAnalysisSubmit - 완료 알림 추가
   const handleAnalysisSubmit = async (e) => {
     e.preventDefault();
     if (!state.companyInfo.resumeFile) {
@@ -955,7 +1086,7 @@ function App() {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000);
-      const response = await fetch('https://youngsun-xi.vercel.app/analyze-all', {
+      const response = await fetch('https://youngsun-xi.vercel.app /analyze-all', {
         method: 'POST',
         body: formData,
         signal: controller.signal,
@@ -1011,6 +1142,13 @@ function App() {
         questionTopics: data.questionTopics,
         selectedForTopics: data.selectedForTopics || []
       });
+      
+      // ✅ 완료 알림 발송
+      sendNotification(
+        '딥글 이력서 분석 완료',
+        `이력서 분석이 완료되었습니다. 경험을 선택해주세요.`
+      );
+      
       goToDirectionSelection(data.resumeId, data.analysisId);
     } catch (error) {
       console.error(`[${new Date().toISOString()}] [DEBUG-Stage2-Frontend] Error in handleAnalysisSubmit:`, error.message);
@@ -1092,7 +1230,7 @@ function App() {
         questionTopics: state.questionTopics
       };
    
-      const response = await fetch('https://youngsun-xi.vercel.app/suggest-direction', {
+      const response = await fetch('https://youngsun-xi.vercel.app /suggest-direction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
@@ -1212,7 +1350,7 @@ function App() {
       setQuestionCount(0);
       setCurrentQuestionHint('');
      
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-question', {
+      const response = await fetch('https://youngsun-xi.vercel.app /generate-question', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1252,6 +1390,12 @@ function App() {
         setCurrentQuestionHint(data.hint);
         console.log(`[${new Date().toISOString()}] Hint received: "${data.hint}"`);
       }
+      
+      // ✅ 완료 알림 발송
+      sendNotification(
+        '딥글 질문 준비 완료',
+        `${state.questionTopics[currentTopicIndex]} 경험 구체화를 시작합니다.`
+      );
      
       dispatch({ type: 'SET_CHAT_LOADING', chatLoading: false });
       typewriterEffect(data.question, () => {
@@ -1282,7 +1426,7 @@ function App() {
         console.log(`[${new Date().toISOString()}] step ${currentStep - 1} question success`);
       }
       dispatch({ type: 'SET_CHAT_LOADING', chatLoading: true, message: '생각 중...' });
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-question', {
+      const response = await fetch('https://youngsun-xi.vercel.app /generate-question', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1423,7 +1567,7 @@ function App() {
         throw new Error(`주제 ${currentTopic}에 선택된 경험이 없습니다.`);
       }
       console.log(`[${new Date().toISOString()}] Sending /generate-episode with selectedExperienceIndices:`, state.selectedExperiencesIndices);
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-episode', {
+      const response = await fetch('https://youngsun-xi.vercel.app /generate-episode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1486,6 +1630,13 @@ function App() {
         setChatHistory([]);
         setQuestionCount(0);
       }
+      
+      // ✅ 완료 알림 발송
+      sendNotification(
+        '딥글 에피소드 생성 완료',
+        `${currentTopic} 에피소드가 완성되었습니다.`
+      );
+      
       console.log(`[${new Date().toISOString()}] Success: Episode generation completed for topic: ${currentTopic}`);
       goToSummarizedEpisodeReview();
     } catch (error) {
@@ -1502,7 +1653,7 @@ function App() {
     setScreen('cover-letter-completion');
   };
 
-  // ✅ 수정: handlePlanRequest
+  // ✅ 수정: handlePlanRequest - 완료 알림 추가
   const handlePlanRequest = async () => {
     console.log(`[${new Date().toISOString()}] Before /generate-plan:`, {
       resumeId: state.resumeId,
@@ -1520,7 +1671,7 @@ function App() {
       }
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 600000);
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-plan', {
+      const response = await fetch('https://youngsun-xi.vercel.app /generate-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1552,6 +1703,13 @@ function App() {
           summarizedExperiences: data.summarizedExperiences
         });
         setChatHistory([...chatHistory, { sender: '딥글', message: '계획서가 준비되었습니다. 확인해보세요.' }]);
+        
+        // ✅ 완료 알림 발송
+        sendNotification(
+          '딥글 계획서 완료',
+          `${state.companyInfo.company} 자소서 계획서가 준비되었습니다.`
+        );
+        
         goToPlanView();
       }
     } catch (error) {
@@ -1567,7 +1725,7 @@ function App() {
     dispatch({ type: 'SET_LOADING', loading: false, message: '' });
   };
 
-  // ✅ 수정: handleGenerateCoverLetter
+  // ✅ 수정: handleGenerateCoverLetter - 완료 알림 추가
   const handleGenerateCoverLetter = async () => {
     console.log(`[${new Date().toISOString()}] Before /generate-cover-letter:`, {
       resumeId: state.resumeId,
@@ -1584,7 +1742,7 @@ function App() {
       }
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000);
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-cover-letter', {
+      const response = await fetch('https://youngsun-xi.vercel.app /generate-cover-letter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1612,6 +1770,13 @@ function App() {
           suggestions: []
         });
         setChatHistory([...chatHistory, { sender: '딥글', message: '자소서가 완성되었습니다. 문단별로 수정해보세요.' }]);
+        
+        // ✅ 완료 알림 발송
+        sendNotification(
+          '딥글 자소서 완료',
+          `${state.companyInfo.company} 자소서 초안이 완성되었습니다.`
+        );
+        
         goToCoverLetterView();
       }
     } catch (error) {
@@ -1646,7 +1811,7 @@ function App() {
     }
   };
 
-  // ✅ 🔥 수정: handleFinalizeCoverLetter - editInstructions 저장 추가
+  // ✅ 수정: handleFinalizeCoverLetter - 완료 알림 추가
   const handleFinalizeCoverLetter = async () => {
     console.log(`[${new Date().toISOString()}] Finalizing cover letter:`, {
       resumeId: state.resumeId,
@@ -1669,7 +1834,7 @@ function App() {
       
       console.log(`[${new Date().toISOString()}] [Proofreading] Sending request to /edit-cover-letter`);
       
-      const response = await fetch('https://youngsun-xi.vercel.app/edit-cover-letter', {
+      const response = await fetch('https://youngsun-xi.vercel.app /edit-cover-letter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1724,6 +1889,12 @@ function App() {
         message: `첨삭이 완료되었습니다. (${data.totalOriginalCharacters}자 → ${data.totalEditedCharacters}자)` 
       }]);
       
+      // ✅ 완료 알림 발송
+      sendNotification(
+        '딥글 첨삭 완료',
+        `자소서 첨삭이 완료되었습니다. (${data.totalOriginalCharacters}자 → ${data.totalEditedCharacters}자)`
+      );
+      
       console.log(`[${new Date().toISOString()}] [Proofreading] ✅ 첨삭 완료 - 문단이 업데이트됨`);
       
     } catch (error) {
@@ -1762,6 +1933,7 @@ function App() {
     }
   };
 
+  ///end of section 1//
   // ✅ 수정: 글래스모피즘 LoadingModal
   const LoadingModal = ({ message }) => (
     <div className="loading-modal-overlay" style={{
@@ -2030,7 +2202,7 @@ const EditInfoPopup = ({ paragraphId, editInstructions, onClose }) => {
 };
 
 
-// End of Section 1
+// End of Section 2
 
 
 // 글래스모피즘 힌트 아이콘 컴포넌트 - 토글 방식으로 변경
@@ -2208,13 +2380,14 @@ const ParagraphDirectionsSummary = ({ paragraphDirections }) => {
       }}
     >
       <h3 style={{
-        marginBottom: '20px',
-        fontSize: '18px',
-        fontWeight: '700',
-        color: '#111827'
-      }}>
-        📋 문단별 생성계획
-      </h3>
+  marginBottom: '20px',
+  fontSize: '18px',
+  fontWeight: '700',
+  color: '#111827'
+}}>
+  <GlassIcon type="guide" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+  문단별 생성계획
+</h3>
 
       {paragraphDirections.map((dir, idx) => (
         <ParagraphPlanCard
@@ -2256,13 +2429,14 @@ const renderNewPlanStructure = (plan) => {
         }}
       >
         <h3 style={{
-          margin: '0 0 16px 0',
-          fontSize: '18px',
-          fontWeight: '700',
-          color: '#111827'
-        }}>
-          📝 자소서 생성 정보
-        </h3>
+  margin: '0 0 16px 0',
+  fontSize: '18px',
+  fontWeight: '700',
+  color: '#111827'
+}}>
+  <GlassIcon type="write" size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+  자소서 생성 정보
+</h3>
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
@@ -2580,7 +2754,7 @@ const renderPlanTable = (plan, showSummarizedExperiences = true) => {
 
 ////5678////
 
-///end of section 2///
+///end of section 3///
 
 // Smooth auto scroll on new chat messages - Focus Mode에서는 필요없음
 useEffect(() => {
@@ -4495,4 +4669,4 @@ return (
 }
 
 export default App;
-// End of Section 3
+// End of Section 4
