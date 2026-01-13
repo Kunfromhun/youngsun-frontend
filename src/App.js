@@ -516,7 +516,7 @@ const DeepGlLogo = ({ size = 120 }) => (
   </div>
 );
 
-// 글래스모피즘 아이콘 컴포넌트 (이모티콘 대체)
+// 글래스모피즘 아이콘//
 const GlassIcon = ({ type, size = 24, style = {} }) => {
   const icons = {
     check: (
