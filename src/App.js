@@ -1035,7 +1035,8 @@ function App() {
           jobTitle: state.companyInfo.jobTitle,
           jobTasks: state.companyInfo.jobTasks,
           jobRequirements: state.companyInfo.jobRequirements,
-          questions: state.companyInfo.questions
+          questions: state.companyInfo.questions,
+          wordLimit: state.companyInfo.wordLimit || '1000'
         }),
         signal: controller.signal,
       });
@@ -1522,11 +1523,7 @@ function App() {
       
       setTimeout(() => {
         const currentStep = questionCount;
-        if (currentStep === 3) {
-          handleGenerateQuestion(userAnswer, 3);
-        } else {
-          handleGenerateQuestion(userAnswer, currentStep + 1);
-        }
+        handleGenerateQuestion(userAnswer, currentStep + 1);
         setIsSubmitting(false);
       }, 600);
     } else {
@@ -3890,31 +3887,33 @@ return (
               )}
             </div>
 
-            {/* Progress dots */}
-            <div
-              style={{
-                position: 'absolute',
-                bottom: '24px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                display: 'flex',
-                gap: '8px'
-              }}
-            >
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    background: i === questionCount ? 'rgba(74, 85, 104, 0.8)' : 'rgba(74, 85, 104, 0.2)',
-                    transform: i === questionCount ? 'scale(1.3)' : 'scale(1)',
-                    transition: 'all 0.3s ease'
-                  }}
-                />
-              ))}
-            </div>
+           {/* Progress indicator - 전체 9개 기준 */}
+<div
+  style={{
+    position: 'absolute',
+    bottom: '24px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '10px 20px',
+    background: 'rgba(255, 255, 255, 0.85)',
+    backdropFilter: 'blur(15px)',
+    WebkitBackdropFilter: 'blur(15px)',
+    borderRadius: '24px',
+    border: '1px solid rgba(74, 85, 104, 0.1)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)'
+  }}
+>
+  <span style={{
+    fontSize: '14px',
+    fontWeight: '600',
+    color: 'rgba(74, 85, 104, 0.9)'
+  }}>
+    질문 {(currentExperienceStep - 1) * 3 + questionCount} / 9
+  </span>
+</div>
           </div>
 
           {state.loading && <LoadingModal message={currentMessage} />}
@@ -4333,31 +4332,88 @@ return (
       )}
 
       {/* Cover Letter Completion */}
-      {screen === 'cover-letter-completion' && (
-        <div className="screen-container">
-          <h2>최종 자소서</h2>
-          <p className="description-text">딥글이 완성한 최종 자소서를 확인해 주세요.</p>
-          <div className="final-letter-container">
-            {state.coverLetterText ? (
-              <div className="final-letter-content">
-                {state.coverLetterText.split('\n').map((line, index) => (
-                  <p key={index} className="paragraph-text">
-                    {line}
-                  </p>
-                ))}
-              </div>
-            ) : (
-              <p className="empty-state">자소서가 없습니다. 다시 생성해 주세요.</p>
-            )}
+    {/* Cover Letter Completion */}
+{screen === 'cover-letter-completion' && (
+  <div className="screen-container">
+    <h2>최종 자소서</h2>
+    <p className="description-text">딥글이 완성한 최종 자소서를 확인해 주세요.</p>
+    <div className="final-letter-container">
+      {state.coverLetterText ? (
+        <div 
+          className="final-letter-content"
+          style={{ position: 'relative' }}
+        >
+          {/* 복사 버튼 */}
+          <div
+            onClick={() => {
+              navigator.clipboard.writeText(state.coverLetterText).then(() => {
+                alert('자소서가 클립보드에 복사되었습니다!');
+              }).catch(() => {
+                alert('복사에 실패했습니다. 직접 선택하여 복사해주세요.');
+              });
+            }}
+            style={{
+              position: 'absolute',
+              top: '16px',
+              right: '16px',
+              width: '36px',
+              height: '36px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(255, 255, 255, 0.9)',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
+              borderRadius: '10px',
+              border: '1px solid rgba(74, 85, 104, 0.15)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(74, 85, 104, 0.1)';
+              e.currentTarget.style.transform = 'scale(1.05)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.06)';
+            }}
+            title="자소서 복사하기"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <rect 
+                x="9" y="9" width="13" height="13" rx="2" 
+                stroke="rgba(74, 85, 104, 0.8)" 
+                strokeWidth="2"
+              />
+              <path 
+                d="M5 15H4C2.89543 15 2 14.1046 2 13V4C2 2.89543 2.89543 2 4 2H13C14.1046 2 15 2.89543 15 4V5" 
+                stroke="rgba(74, 85, 104, 0.8)" 
+                strokeWidth="2"
+              />
+            </svg>
           </div>
-          <div className="action-buttons">
-            <button className="button-secondary" onClick={() => setScreen('cover-letter-view')} disabled={state.loading}>
-              뒤로 가기
-            </button>
-          </div>
-          {state.loading && <LoadingModal message={currentMessage} />}
+
+          {state.coverLetterText.split('\n').map((line, index) => (
+            <p key={index} className="paragraph-text">
+              {line}
+            </p>
+          ))}
         </div>
+      ) : (
+        <p className="empty-state">자소서가 없습니다. 다시 생성해 주세요.</p>
       )}
+    </div>
+    <div className="action-buttons">
+      <button className="button-secondary" onClick={() => setScreen('cover-letter-view')} disabled={state.loading}>
+        뒤로 가기
+      </button>
+    </div>
+    {state.loading && <LoadingModal message={currentMessage} />}
+  </div>
+)}
     </div>
 
     {/* CSS 애니메이션 */}
