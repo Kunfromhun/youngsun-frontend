@@ -642,6 +642,7 @@ const initialState = {
   resumeId: '',
   preAnalysisId: '',
   analysisId: '',
+  analysisData: null,  // ← 이거 추가
   companyInfo: { company: '', jobTitle: '', jobTasks: '', jobRequirements: '', questions: '', resumeFile: null, wordLimit: '' },
   plan: '',
   loading: false,
@@ -684,6 +685,7 @@ const reducer = (state, action) => {
         ...state,
         resumeId: newResumeId,
         analysisId: action.analysisId || state.analysisId,
+        analysisData: action.analysisData || state.analysisData,  // ← 이거 추가
         companyInfo: action.companyInfo || state.companyInfo,
         competencies: action.competencies || state.competencies,
         selectedExperiences: action.selectedExperiences || state.selectedExperiences,
@@ -1027,7 +1029,7 @@ function App() {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000);
-      const response = await fetch('https://youngsun-xi.vercel.app/pre-analyze', {
+      const response = await fetch('http://localhost:3001/pre-analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1087,7 +1089,7 @@ function App() {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000);
-      const response = await fetch('https://youngsun-xi.vercel.app/analyze-all', {
+      const response = await fetch('http://localhost:3001/analyze-all', {
         method: 'POST',
         body: formData,
         signal: controller.signal,
@@ -1136,6 +1138,7 @@ function App() {
         type: 'SET_ANALYSIS',
         resumeId: data.resumeId,
         analysisId: data.analysisId,
+        analysisData: data,  // ← 이거 추가 (응답 전체 저장)
         companyInfo: updatedCompanyInfo,
         competencies: data.competencies,
         selectedExperiences: reindexedExperiences,
@@ -1231,7 +1234,7 @@ function App() {
         questionTopics: state.questionTopics
       };
    
-      const response = await fetch('https://youngsun-xi.vercel.app/suggest-direction', {
+      const response = await fetch('http://localhost:3001/suggest-direction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
@@ -1351,12 +1354,13 @@ function App() {
       setQuestionCount(0);
       setCurrentQuestionHint('');
      
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-question', {
+      const response = await fetch('http://localhost:3001/generate-question', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           resumeId: state.resumeId,
           analysisId: state.analysisId,
+          analysisData: state.analysisData,  // ← 이거 추가
           selectedExperienceIndices: state.selectedExperiencesIndices,
           chatHistory: [],
           questionTopics: state.questionTopics,
@@ -1427,12 +1431,13 @@ function App() {
         console.log(`[${new Date().toISOString()}] step ${currentStep - 1} question success`);
       }
       dispatch({ type: 'SET_CHAT_LOADING', chatLoading: true, message: '생각 중...' });
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-question', {
+      const response = await fetch('http://localhost:3001/generate-question', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           resumeId: state.resumeId,
           analysisId: state.analysisId,
+          analysisData: state.analysisData,  // ← 이거 추가
           previousAnswer: answer || '',
           selectedExperienceIndices: state.selectedExperiencesIndices,
           chatHistory,
@@ -1564,7 +1569,7 @@ function App() {
         throw new Error(`주제 ${currentTopic}에 선택된 경험이 없습니다.`);
       }
       console.log(`[${new Date().toISOString()}] Sending /generate-episode with selectedExperienceIndices:`, state.selectedExperiencesIndices);
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-episode', {
+      const response = await fetch('http://localhost:3001/generate-episode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1668,7 +1673,7 @@ function App() {
       }
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 600000);
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-plan', {
+      const response = await fetch('http://localhost:3001/generate-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1739,7 +1744,7 @@ function App() {
       }
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000);
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-cover-letter', {
+      const response = await fetch('http://localhost:3001/generate-cover-letter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1831,7 +1836,7 @@ function App() {
       
       console.log(`[${new Date().toISOString()}] [Proofreading] Sending request to /edit-cover-letter`);
       
-      const response = await fetch('https://youngsun-xi.vercel.app/edit-cover-letter', {
+      const response = await fetch('http://localhost:3001/edit-cover-letter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2753,7 +2758,7 @@ const renderPlanTable = (plan, showSummarizedExperiences = true) => {
 
 ///end of section 3///
 
-// Smooth auto scroll on new chat messages - Focus Mode에서는 필요없음
+
 useEffect(() => {
   // Focus Mode에서는 스크롤 불필요
 }, [chatHistory]);
@@ -3676,53 +3681,7 @@ return (
                         pointerEvents: 'none'
                       }}
                     />
-                    <style jsx>{`
-                      @keyframes pulseRing1 {
-                        0% {
-                          width: 120px;
-                          height: 120px;
-                          opacity: 0;
-                        }
-                        10% {
-                          opacity: 0.8;
-                        }
-                        100% {
-                          width: 240px;
-                          height: 240px;
-                          opacity: 0;
-                        }
-                      }
-                      @keyframes pulseRing2 {
-                        0% {
-                          width: 120px;
-                          height: 120px;
-                          opacity: 0;
-                        }
-                        10% {
-                          opacity: 0.6;
-                        }
-                        100% {
-                          width: 240px;
-                          height: 240px;
-                          opacity: 0;
-                        }
-                      }
-                      @keyframes pulseRing3 {
-                        0% {
-                          width: 120px;
-                          height: 120px;
-                          opacity: 0;
-                        }
-                        10% {
-                          opacity: 0.4;
-                        }
-                        100% {
-                          width: 240px;
-                          height: 240px;
-                          opacity: 0;
-                        }
-                      }
-                    `}</style>
+                    
                   </>
                 )}
               </div>
@@ -3802,18 +3761,7 @@ return (
                         )}
                     </div>
                   </div>
-                  <style jsx>{`
-                    @keyframes slideInFromLeft {
-                      0% {
-                        transform: translateX(-100%);
-                        opacity: 0;
-                      }
-                      100% {
-                        transform: translateX(0);
-                        opacity: 1;
-                      }
-                    }
-                  `}</style>
+                 
                 </div>
               )}
 
@@ -4417,7 +4365,7 @@ return (
     </div>
 
     {/* CSS 애니메이션 */}
-    <style jsx>{`
+    <style>{`
       @keyframes loadingPulse1 {
         0% {
           width: 80px;

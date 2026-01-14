@@ -1960,3 +1960,51 @@ progress::-webkit-progress-value {
     opacity: 0.5;
   }
 }
+/* 파동링 애니메이션 - 채팅 로딩 */
+@keyframes pulseRing1 {
+  0% {
+    width: 120px;
+    height: 120px;
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  100% {
+    width: 240px;
+    height: 240px;
+    opacity: 0;
+  }
+}
+
+@keyframes pulseRing2 {
+  0% {
+    width: 120px;
+    height: 120px;
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  100% {
+    width: 240px;
+    height: 240px;
+    opacity: 0;
+  }
+}
+
+@keyframes pulseRing3 {
+  0% {
+    width: 120px;
+    height: 120px;
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.4;
+  }
+  100% {
+    width: 240px;
+    height: 240px;
+    opacity: 0;
+  }
+}
