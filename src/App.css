@@ -1041,6 +1041,7 @@ button:disabled {
 .typing-indicator .dot:nth-child(3) {
   animation-delay: 0.32s;
 }
+/* end of section 1 */
 
 /* Enhanced Loading States */
 .loading-container {
@@ -2007,4 +2008,9 @@ progress::-webkit-progress-value {
     height: 240px;
     opacity: 0;
   }
+}
+
+/* STAR textarea 스크롤바 숨김 */
+.star-textarea-no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

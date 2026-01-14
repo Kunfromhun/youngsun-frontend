@@ -938,9 +938,30 @@ function App() {
   const [showEditInfoPopup, setShowEditInfoPopup] = useState(null); // { paragraphId, editInstructions }
 
   // 힌트 관련 state
-  const [currentQuestionHint, setCurrentQuestionHint] = useState('');
-  const [showHintTooltip, setShowHintTooltip] = useState(false);
-  const [hintTooltipPosition, setHintTooltipPosition] = useState({ x: 0, y: 0 });
+// 힌트 관련 state
+const [currentQuestionHint, setCurrentQuestionHint] = useState('');
+const [showHintTooltip, setShowHintTooltip] = useState(false);
+const [hintTooltipPosition, setHintTooltipPosition] = useState({ x: 0, y: 0 });
+
+// v25.3: STAR 입력 시스템
+// v25.3: STAR 입력 시스템
+const [inputFields, setInputFields] = useState(null);
+const [starInputs, setStarInputs] = useState({
+  situation: '',
+  task: '',
+  action: '',
+  result: ''
+});
+const [inputMode, setInputMode] = useState('text');
+
+// STAR 타이프라이터 효과용 state
+const [starDisplayTexts, setStarDisplayTexts] = useState({
+  situation: { line1: '', line2: '' },
+  task: { line1: '', line2: '' },
+  action: { line1: '', line2: '' },
+  result: { line1: '', line2: '' }
+});
+const [isStarTextAnimating, setIsStarTextAnimating] = useState(false);
  
   // Simplified popup positions
   const [aiSuggestionPopupPosition, setAiSuggestionPopupPosition] = useState({ x: window.innerWidth / 2 - 200, y: window.innerHeight / 2 - 150 });
@@ -952,7 +973,65 @@ function App() {
   const proofreadingPopupRef = useRef(null);
 
   // ✅ 동적 로딩 메시지 훅 사용
-  const { currentMessage, startLoading, stopLoading } = useLoadingMessage();
+ // ✅ 동적 로딩 메시지 훅 사용
+// STAR 텍스트 타이프라이터 효과 함수
+// ✅ 동적 로딩 메시지 훅 사용
+const { currentMessage, startLoading, stopLoading } = useLoadingMessage();
+// STAR 텍스트 타이프라이터 효과 함수
+const typewriterSTARTexts = (fields, onComplete) => {
+  if (!fields || fields.length === 0) {
+    if (onComplete) onComplete();
+    return;
+  }
+
+  setIsStarTextAnimating(true);
+  
+  // 초기화
+  setStarDisplayTexts({
+    situation: { line1: '', line2: '' },
+    task: { line1: '', line2: '' },
+    action: { line1: '', line2: '' },
+    result: { line1: '', line2: '' }
+  });
+
+  // 각 필드의 목표 텍스트
+  const targets = {};
+  fields.forEach(field => {
+    targets[field.key] = {
+      line1: field.placeholder?.line1 || '',
+      line2: field.placeholder?.line2 || ''
+    };
+  });
+
+  // 전체 최대 길이 계산
+  let maxLength = 0;
+  Object.values(targets).forEach(t => {
+    maxLength = Math.max(maxLength, t.line1.length, t.line2.length);
+  });
+
+  let charIndex = 0;
+  const interval = setInterval(() => {
+    if (charIndex >= maxLength) {
+      clearInterval(interval);
+      setIsStarTextAnimating(false);
+      if (onComplete) onComplete();
+      return;
+    }
+
+    setStarDisplayTexts(prev => {
+      const updated = { ...prev };
+      Object.keys(targets).forEach(key => {
+        updated[key] = {
+          line1: targets[key].line1.slice(0, charIndex + 1),
+          line2: targets[key].line2.slice(0, charIndex + 1)
+        };
+      });
+      return updated;
+    });
+
+    charIndex++;
+  }, 30);
+};
 
   const goToAnalysis = () => {
     setCurrentProcessStep(0);
@@ -987,6 +1066,11 @@ function App() {
 
   const goToSummarizedEpisodeReview = () => {
     setScreen('summarized-episode-review');
+  };
+
+  const goToPlanView = () => {
+    setCurrentProcessStep(3);
+    setScreen('plan-view');
   };
 
   const goToCoverLetterView = () => {
@@ -1395,6 +1479,15 @@ function App() {
         setCurrentQuestionHint(data.hint);
         console.log(`[${new Date().toISOString()}] Hint received: "${data.hint}"`);
       }
+
+      /// v25.3: STAR inputFields 저장 + 타이프라이터 효과
+      if (data.inputFields) {
+        setInputFields(data.inputFields);
+        setInputMode('star');
+        setStarInputs({ situation: '', task: '', action: '', result: '' });
+        typewriterSTARTexts(data.inputFields);
+        console.log(`[${new Date().toISOString()}] STAR inputFields received:`, data.inputFields);
+      }
       
       // ✅ 완료 알림 발송
       sendNotification(
@@ -1476,6 +1569,15 @@ function App() {
         setCurrentQuestionHint(data.hint);
         console.log(`[${new Date().toISOString()}] New hint received: "${data.hint}"`);
       }
+
+    // v25.3: STAR inputFields 업데이트 + 타이프라이터 효과
+    if (data.inputFields) {
+      setInputFields(data.inputFields);
+      setInputMode('star');
+      setStarInputs({ situation: '', task: '', action: '', result: '' });
+      typewriterSTARTexts(data.inputFields);
+      console.log(`[${new Date().toISOString()}] STAR inputFields updated:`, data.inputFields);
+    }
    
       dispatch({ type: 'SET_CHAT_LOADING', chatLoading: false });
    
@@ -1490,6 +1592,10 @@ function App() {
         setQuestionCount(currentStep);
      
         if (data.needsEnd) {
+          // 종료 시 STAR 입력칸 숨기기
+          setInputFields(null);
+          setInputMode('text');
+          
           setTimeout(() => {
             typewriterEffect(`자, 이제 ${currentTopic} 구체화가 끝났습니다. 에피소드를 생성하겠습니다.`, () => {
               setChatHistory(prev => [...prev, {
@@ -1514,38 +1620,51 @@ function App() {
   };
 
   const handleChatSubmit = async () => {
-    if (!currentAnswer.trim() || isSubmitting) {
-      return;
+    if (isSubmitting) return;
+
+    // v25.3: 입력 모드에 따라 다른 데이터 처리
+    let userAnswer;
+
+    if (inputMode === 'star') {
+      const hasAnyInput = Object.values(starInputs).some(v => v.trim());
+      if (!hasAnyInput) return;
+      userAnswer = { ...starInputs };
+    } else {
+      if (!currentAnswer.trim()) return;
+      userAnswer = currentAnswer;
     }
     
     setIsSubmitting(true);
-    const userAnswer = currentAnswer;
-    setCurrentAnswer('');
     
+    // 메인 질문 버블 페이드아웃
     const currentBubble = document.querySelector('.focus-question-bubble');
     if (currentBubble) {
       currentBubble.style.animation = 'slideOutToRight 0.6s ease-in-out forwards';
+    }
+    
+    // STAR 모드일 때만 텍스트 페이드아웃
+    if (inputMode === 'star') {
+      const starTextLines = document.querySelectorAll('.star-text-line1, .star-text-line2');
+      starTextLines.forEach(el => {
+        el.style.animation = 'slideOutToRight 0.6s ease-in-out forwards';
+      });
+    }
+    
+    setTimeout(() => {
+      const currentStep = questionCount;
+      handleGenerateQuestion(userAnswer, currentStep + 1);
       
-      setTimeout(() => {
-        const currentStep = questionCount;
-        handleGenerateQuestion(userAnswer, currentStep + 1);
-        setIsSubmitting(false);
-      }, 600);
-    } else {
+      // 입력 리셋
+      setCurrentAnswer('');
+      setStarInputs({ situation: '', task: '', action: '', result: '' });
+      setStarDisplayTexts({
+        situation: { line1: '', line2: '' },
+        task: { line1: '', line2: '' },
+        action: { line1: '', line2: '' },
+        result: { line1: '', line2: '' }
+      });
       setIsSubmitting(false);
-    }
-  };
-
-  const goToPlanView = () => {
-    console.log(`[${new Date().toISOString()}] Transitioning to plan-view screen`);
-    if (!state.analysisId || !state.resumeId) {
-      setError('분석 데이터가 없습니다. 처음부터 다시 시작해주세요.');
-      setScreen('start');
-      return;
-    }
-    setCurrentProcessStep(3);
-    setShowPlanTransitionPopup(false);
-    setScreen('plan-view');
+    }, 800);
   };
 
   // ✅ 수정: handleSummarizeEpisodes
@@ -1936,6 +2055,8 @@ function App() {
   };
 
   ///end of section 1//
+
+
   // ✅ 수정: 글래스모피즘 LoadingModal
   const LoadingModal = ({ message }) => (
     <div className="loading-modal-overlay" style={{
@@ -2203,8 +2324,6 @@ const EditInfoPopup = ({ paragraphId, editInstructions, onClose }) => {
   );
 };
 
-
-// End of Section 2
 
 
 // 글래스모피즘 힌트 아이콘 컴포넌트 - 토글 방식으로 변경
@@ -2756,8 +2875,7 @@ const renderPlanTable = (plan, showSummarizedExperiences = true) => {
 
 ////5678////
 
-///end of section 3///
-
+///end of section 2///
 
 useEffect(() => {
   // Focus Mode에서는 스크롤 불필요
@@ -2784,6 +2902,159 @@ useEffect(() => {
     handleDirectionSuggestion(state.resumeId, state.analysisId);
   }
 }, [screen, state.resumeId, state.analysisId, state.selectedExperiences.length]);
+
+/**
+ * v25.3: STAR 입력 패널 (2x2 그리드)
+ */
+const STARInputPanel = ({ inputFields, starInputs, setStarInputs, disabled, onModeSwitch, displayTexts }) => {
+  if (!inputFields || inputFields.length === 0) return null;
+  
+  const orderedKeys = ['situation', 'task', 'action', 'result'];
+  const orderedFields = orderedKeys
+    .map(key => inputFields.find(f => f.key === key))
+    .filter(Boolean);
+  
+  const topRow = orderedFields.slice(0, 2);
+  const bottomRow = orderedFields.slice(2, 4);
+  
+  const renderField = (field) => (
+    <div 
+      key={field.key}
+      style={{
+        flex: 1,
+        minWidth: '320px',
+        maxWidth: '400px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px'
+      }}
+    >
+    {/* 안내 텍스트 - 타이프라이터 효과 적용 */}
+    <div style={{
+        fontSize: '15px',
+        color: '#86868B',
+        lineHeight: '1.5',
+        textAlign: 'center',
+        minHeight: '50px'
+      }}>
+        <div 
+          className="star-text-line1"
+          style={{ 
+            color: '#1D1D1F',
+            fontWeight: '500',
+            marginBottom: '4px'
+          }}
+        >
+          {displayTexts?.[field.key]?.line1 || ''}
+        </div>
+        <div 
+          className="star-text-line2"
+          style={{ 
+            fontSize: '13px', 
+            color: '#86868B'
+          }}
+        >
+          {displayTexts?.[field.key]?.line2 || ''}
+        </div>
+      </div>
+      
+      {/* 입력 필드 */}
+      <textarea
+        value={starInputs[field.key] || ''}
+        onChange={(e) => setStarInputs(prev => ({
+          ...prev,
+          [field.key]: e.target.value
+        }))}
+        disabled={disabled}
+        style={{
+          width: '100%',
+          minHeight: '50px',
+          maxHeight: '120px',
+          padding: '14px 20px',
+          fontSize: '17px',
+          border: '1px solid rgba(74, 85, 104, 0.3)',
+          borderRadius: '24px',
+          resize: 'none',
+          background: 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          outline: 'none',
+          transition: 'all 0.2s ease',
+          fontFamily: 'inherit',
+          lineHeight: '1.5',
+          overflow: 'hidden',
+          overflowY: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
+        }}
+        className="star-textarea-no-scrollbar"
+        onFocus={(e) => {
+          e.target.style.borderColor = 'rgba(74, 85, 104, 0.5)';
+          e.target.style.boxShadow = '0 0 0 3px rgba(74, 85, 104, 0.1)';
+        }}
+        onBlur={(e) => {
+          e.target.style.borderColor = 'rgba(74, 85, 104, 0.3)';
+          e.target.style.boxShadow = 'none';
+        }}
+      />
+    </div>
+  );
+  
+  return (
+    <div 
+      className="star-input-panel"
+      style={{
+        width: '100%',
+        maxWidth: '900px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '24px',
+        alignItems: 'center'
+      }}
+    >
+      {/* 상단 행 */}
+      <div style={{
+        display: 'flex',
+        gap: '24px',
+        width: '100%',
+        justifyContent: 'center',
+        flexWrap: 'wrap'
+      }}>
+        {topRow.map(renderField)}
+      </div>
+      
+      {/* 하단 행 */}
+      <div style={{
+        display: 'flex',
+        gap: '24px',
+        width: '100%',
+        justifyContent: 'center',
+        flexWrap: 'wrap'
+      }}>
+        {bottomRow.map(renderField)}
+      </div>
+      
+      {/* 모드 전환 */}
+      <button
+        onClick={onModeSwitch}
+        style={{
+          marginTop: '4px',
+          padding: '10px 16px',
+          fontSize: '15px',
+          color: '#86868B',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          transition: 'color 0.2s ease'
+        }}
+        onMouseEnter={(e) => e.target.style.color = '#1D1D1F'}
+        onMouseLeave={(e) => e.target.style.color = '#86868B'}
+      >
+        일반 텍스트로 입력하기
+      </button>
+    </div>
+  );
+};
 
 /**
  * 🔥 NEW: 문단별 수정 내용 팝업 (이름 변경해서 중복 방지)
@@ -3765,103 +4036,206 @@ return (
                 </div>
               )}
 
-              {/* 답변 입력 영역 */}
-              {chatHistory.length > 0 && (
+             {/* 답변 입력 영역 - v25.3 STAR 모드 추가 */}
+             {chatHistory.length > 0 && (
                 <div
                   style={{
                     width: '100%',
-                    maxWidth: '800px',
                     display: 'flex',
-                    gap: '12px',
-                    alignItems: 'flex-end'
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '16px'
                   }}
                 >
-                  <textarea
-                    className="input-field"
-                    placeholder="최대한 자세하게 작성해주실수록, 딥글은 더욱 자세한 분석이 가능합니다"
-                    value={currentAnswer}
-                    onChange={(e) => setCurrentAnswer(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        if (!state.chatLoading && currentAnswer.trim()) {
-                          handleChatSubmit();
-                        }
-                      }
-                    }}
-                    disabled={state.chatLoading}
-                    style={{
-                      flex: 1,
-                      minHeight: '50px',
-                      maxHeight: '120px',
-                      resize: 'none',
-                      borderRadius: '24px',
-                      padding: '14px 20px',
-                      border: '1px solid rgba(74, 85, 104, 0.3)',
-                      outline: 'none',
-                      transition: 'all 0.2s ease',
-                      background: 'rgba(255, 255, 255, 0.8)',
-                      backdropFilter: 'blur(10px)',
-                      WebkitBackdropFilter: 'blur(10px)'
-                    }}
-                  />
-                  <button
-                    onClick={handleChatSubmit}
-                    disabled={state.chatLoading || !currentAnswer.trim() || isSubmitting}
-                    style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '50%',
-                      border: 'none',
-                      background:
-                        state.chatLoading || !currentAnswer.trim()
-                          ? '#E5E5EA'
-                          : 'linear-gradient(135deg, rgba(74, 85, 104, 0.9), rgba(74, 85, 104, 0.8))',
-                      backdropFilter: 'blur(10px)',
-                      WebkitBackdropFilter: 'blur(10px)',
-                      color: 'white',
-                      cursor: state.chatLoading || !currentAnswer.trim() || isSubmitting ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '20px',
-                      transition: 'all 0.2s ease',
-                      boxShadow: '0 4px 12px rgba(74, 85, 104, 0.2)'
-                    }}
-                  >
-                    ↑
-                  </button>
+                  {/* STAR 모드 */}
+                  {inputMode === 'star' && inputFields ? (
+                    <>
+                 <STARInputPanel
+                        inputFields={inputFields}
+                        starInputs={starInputs}
+                        setStarInputs={setStarInputs}
+                        disabled={state.chatLoading}
+                        onModeSwitch={() => setInputMode('text')}
+                        displayTexts={starDisplayTexts}
+                      />
+                      
+                     {/* 제출 버튼 + Progress indicator 가로 배치 */}
+                     <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px'
+                      }}>
+                        {/* 왼쪽: Progress indicator */}
+                        <div
+                          style={{
+                            padding: '10px 20px',
+                            background: 'rgba(255, 255, 255, 0.85)',
+                            backdropFilter: 'blur(15px)',
+                            WebkitBackdropFilter: 'blur(15px)',
+                            borderRadius: '24px',
+                            border: '1px solid rgba(74, 85, 104, 0.1)',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)'
+                          }}
+                        >
+                          <span style={{
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: 'rgba(74, 85, 104, 0.9)'
+                          }}>
+                            질문 {(currentExperienceStep - 1) * 3 + questionCount} / 9
+                          </span>
+                        </div>
+
+                        {/* 오른쪽: 제출 버튼 */}
+                        <button
+                          onClick={handleChatSubmit}
+                          disabled={state.chatLoading || !Object.values(starInputs).some(v => v.trim()) || isSubmitting}
+                          style={{
+                            padding: '14px 36px',
+                            borderRadius: '24px',
+                            border: 'none',
+                            background: Object.values(starInputs).some(v => v.trim())
+                              ? 'linear-gradient(135deg, rgba(74, 85, 104, 0.9), rgba(74, 85, 104, 0.8))'
+                              : '#E5E5EA',
+                            backdropFilter: 'blur(10px)',
+                            WebkitBackdropFilter: 'blur(10px)',
+                            color: 'white',
+                            fontSize: '16px',
+                            fontWeight: '500',
+                            cursor: Object.values(starInputs).some(v => v.trim()) && !isSubmitting ? 'pointer' : 'not-allowed',
+                            transition: 'all 0.2s ease',
+                            boxShadow: Object.values(starInputs).some(v => v.trim()) 
+                              ? '0 4px 12px rgba(74, 85, 104, 0.3)' 
+                              : 'none'
+                          }}
+                        >
+                          답변 제출하기 →
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    /* 기존 텍스트 모드 */
+                    <>
+                      <div
+                        style={{
+                          width: '100%',
+                          maxWidth: '800px',
+                          display: 'flex',
+                          gap: '12px',
+                          alignItems: 'flex-end'
+                        }}
+                      >
+                        <textarea
+                          className="input-field"
+                          placeholder="최대한 자세하게 작성해주실수록, 딥글은 더욱 자세한 분석이 가능합니다"
+                          value={currentAnswer}
+                          onChange={(e) => setCurrentAnswer(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              if (!state.chatLoading && currentAnswer.trim()) {
+                                handleChatSubmit();
+                              }
+                            }
+                          }}
+                          disabled={state.chatLoading}
+                          style={{
+                            flex: 1,
+                            minHeight: '50px',
+                            maxHeight: '120px',
+                            resize: 'none',
+                            borderRadius: '24px',
+                            padding: '14px 20px',
+                            border: '1px solid rgba(74, 85, 104, 0.3)',
+                            outline: 'none',
+                            transition: 'all 0.2s ease',
+                            background: 'rgba(255, 255, 255, 0.8)',
+                            backdropFilter: 'blur(10px)',
+                            WebkitBackdropFilter: 'blur(10px)'
+                          }}
+                        />
+                        <button
+                          onClick={handleChatSubmit}
+                          disabled={state.chatLoading || !currentAnswer.trim() || isSubmitting}
+                          style={{
+                            width: '48px',
+                            height: '48px',
+                            borderRadius: '50%',
+                            border: 'none',
+                            background:
+                              state.chatLoading || !currentAnswer.trim()
+                                ? '#E5E5EA'
+                                : 'linear-gradient(135deg, rgba(74, 85, 104, 0.9), rgba(74, 85, 104, 0.8))',
+                            backdropFilter: 'blur(10px)',
+                            WebkitBackdropFilter: 'blur(10px)',
+                            color: 'white',
+                            cursor: state.chatLoading || !currentAnswer.trim() || isSubmitting ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '20px',
+                            transition: 'all 0.2s ease',
+                            boxShadow: '0 4px 12px rgba(74, 85, 104, 0.2)'
+                          }}
+                        >
+                          ↑
+                        </button>
+                      </div>
+                      
+                      {/* STAR 모드 전환 버튼 (inputFields가 있을 때만) */}
+                      {inputFields && (
+                        <button
+                          onClick={() => setInputMode('star')}
+                          style={{
+                            padding: '10px 16px',
+                            fontSize: '15px',
+                            color: '#86868B',
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            transition: 'color 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => e.target.style.color = '#1D1D1F'}
+                          onMouseLeave={(e) => e.target.style.color = '#86868B'}
+                        >
+                          STAR 구조로 입력하기
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
             </div>
 
-           {/* Progress indicator - 전체 9개 기준 */}
-<div
-  style={{
-    position: 'absolute',
-    bottom: '24px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '10px 20px',
-    background: 'rgba(255, 255, 255, 0.85)',
-    backdropFilter: 'blur(15px)',
-    WebkitBackdropFilter: 'blur(15px)',
-    borderRadius: '24px',
-    border: '1px solid rgba(74, 85, 104, 0.1)',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)'
-  }}
->
-  <span style={{
-    fontSize: '14px',
-    fontWeight: '600',
-    color: 'rgba(74, 85, 104, 0.9)'
-  }}>
-    질문 {(currentExperienceStep - 1) * 3 + questionCount} / 9
-  </span>
-</div>
+           {/* Progress indicator - STAR 모드가 아닐 때만 표시 */}
+{!(inputMode === 'star' && inputFields) && (
+  <div
+    style={{
+      position: 'absolute',
+      bottom: '24px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      padding: '10px 20px',
+      background: 'rgba(255, 255, 255, 0.85)',
+      backdropFilter: 'blur(15px)',
+      WebkitBackdropFilter: 'blur(15px)',
+      borderRadius: '24px',
+      border: '1px solid rgba(74, 85, 104, 0.1)',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)'
+    }}
+  >
+    <span style={{
+      fontSize: '14px',
+      fontWeight: '600',
+      color: 'rgba(74, 85, 104, 0.9)'
+    }}>
+      질문 {(currentExperienceStep - 1) * 3 + questionCount} / 9
+    </span>
+  </div>
+)}
           </div>
 
           {state.loading && <LoadingModal message={currentMessage} />}
@@ -4673,4 +5047,4 @@ return (
 }
 
 export default App;
-// End of Section 4
+// End of Section 3
