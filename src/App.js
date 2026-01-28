@@ -2,9 +2,22 @@
 /// Section 1: Initial Setup and State Management for App.js (딥글 글래스모피즘 버전)
 // This section includes imports, initial state, reducer, and state declarations
 // Attach this section first when reconstructing App.js
-import React, { useState, useReducer, useRef, useEffect } from 'react';
-import './App.css';
-
+import React, { useState, useReducer, useRef, useEffect, useCallback } from 'react';
+import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';import './App.css';
+import { useAuth } from './contexts/AuthContext';
+import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
+import DashboardPage from './pages/DashboardPage';
+import IntroPage from './pages/IntroPage';
+import MyPage from './pages/MyPage';
+import ProjectDetailPage from './pages/ProjectDetailPage';
+import DatabasePage from './pages/DatabasePage';
+import CompanyFolderPage from './pages/CompanyFolderPage';
+import EpisodeListPage from './pages/EpisodeListPage';
+import CoverLetterListPage from './pages/CoverLetterListPage';
+import EpisodeDetailPage from './pages/EpisodeDetailPage';
+import CoverLetterDetailPage from './pages/CoverLetterDetailPage';
+import SearchPage from './pages/SearchPage';
 // ============================================
 // ✅ 한국어 조사 처리 유틸리티
 // ============================================
@@ -202,7 +215,7 @@ const IntroAnimation = ({ onComplete }) => {
     }}>
      
       {/* CSS 애니메이션을 위한 스타일 태그 */}
-      <style jsx>{`
+      <style >{`
         @keyframes rollFromLeft {
           0% { transform: translate(-50%, -50%) translateX(-400px) rotate(-720deg); opacity: 0; }
           100% { transform: translate(-50%, -50%) translateX(0) rotate(0deg); opacity: 1; }
@@ -643,6 +656,8 @@ const initialState = {
   preAnalysisId: '',
   analysisId: '',
   analysisData: null,  // ← 이거 추가
+  talentProfile: '',
+  coreCompetency: '',
   companyInfo: { company: '', jobTitle: '', jobTasks: '', jobRequirements: '', questions: '', resumeFile: null, wordLimit: '' },
   plan: '',
   loading: false,
@@ -691,7 +706,9 @@ const reducer = (state, action) => {
         selectedExperiences: action.selectedExperiences || state.selectedExperiences,
         selectedExperiencesIndices: action.selectedExperiencesIndices || state.selectedExperiencesIndices,
         questionTopics: action.questionTopics || state.questionTopics,
-        selectedForTopics: action.selectedForTopics || state.selectedForTopics
+        selectedForTopics: action.selectedForTopics || state.selectedForTopics,
+        talentProfile: action.talentProfile || state.talentProfile,
+        coreCompetency: action.coreCompetency || state.coreCompetency
       };
     case 'SET_PLAN':
       console.log(`[${new Date().toISOString()}] SET_PLAN: resumeId='${state.resumeId}' exists`);
@@ -910,21 +927,225 @@ const useLoadingMessage = () => {
   return { currentMessage, startLoading, stopLoading };
 };
 
+/**
+* v25.3: STAR 입력 패널 (2x2 그리드) - App 바깥으로 이동
+*/
+const STARInputPanel = React.memo(({ inputFields, starInputs, setStarInputs, disabled, onModeSwitch, displayTexts, phaseNumber, onHelpClick }) => 
+  {  console.log('[STARInputPanel] displayTexts:', JSON.stringify(displayTexts));
+  if (!inputFields || inputFields.length === 0) return null;
+  
+  const orderedKeys = ['situation', 'task', 'action', 'result'];
+  const orderedFields = orderedKeys
+    .map(key => inputFields.find(f => f.key === key))
+    .filter(Boolean);
+  
+  const topRow = orderedFields.slice(0, 2);
+  const bottomRow = orderedFields.slice(2, 4);
+  
+  const renderField = (field) => (
+    <div
+      key={field.key}
+      style={{
+        flex: 1,
+        minWidth: '320px',
+        maxWidth: '400px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px'
+      }}
+    >
+    <div style={{
+        fontSize: '15px',
+        color: '#86868B',
+        lineHeight: '1.5',
+        textAlign: 'center',
+        minHeight: '50px',
+        position: 'relative'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px'
+        }}>
+          <div 
+            className="star-text-line1"
+            style={{ 
+              color: '#1D1D1F',
+              fontWeight: '500',
+              marginBottom: '4px'
+            }}
+          >
+            {displayTexts?.[field.key]?.line1 || ''}
+          </div>
+ {/* 객관식 헬프 아이콘 - 회색 SVG 스타일 */}
+ {true && (       
+                 <div
+              className="mcq-help-icon"
+              onClick={() => onHelpClick && onHelpClick(field.key, displayTexts?.[field.key]?.line1 || '')}
+              title="이 질문에 대한 답을 하기가 어려우면, 객관식으로 진행할 수 있어요"
+              style={{
+                width: '20px',
+                height: '20px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'rgba(107, 114, 128, 0.08)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                border: '1px solid rgba(107, 114, 128, 0.2)',
+                borderRadius: '50%',
+                transition: 'all 0.2s ease',
+                marginBottom: '4px',
+                flexShrink: 0
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.1)';
+                e.currentTarget.style.background = 'rgba(107, 114, 128, 0.15)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.background = 'rgba(107, 114, 128, 0.08)';
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <path 
+                  d="M18 8.5V8a2 2 0 0 0-4 0v.5M14 8.5V6a2 2 0 0 0-4 0v2.5M10 8.5V7a2 2 0 0 0-4 0v5.5M6 12.5V18a4 4 0 0 0 4 4h4a4 4 0 0 0 4-4v-5.5a2 2 0 0 0-4 0M10 8.5V12M14 8.5V12" 
+                  stroke="rgba(75, 85, 99, 0.8)" 
+                  strokeWidth="1.5" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+          )}
+        </div>
+        <div 
+          className="star-text-line2"
+          style={{ 
+            fontSize: '13px', 
+            color: '#86868B'
+          }}
+        >
+          {displayTexts?.[field.key]?.line2 || ''}
+        </div>
+      </div>
+      
+      <textarea
+        key={`star-textarea-${field.key}`}
+        value={starInputs[field.key] || ''}
+        onChange={(e) => setStarInputs(prev => ({
+          ...prev,
+          [field.key]: e.target.value
+        }))}
+        disabled={disabled}
+        style={{
+          width: '100%',
+          minHeight: '50px',
+          maxHeight: '120px',
+          padding: '14px 20px',
+          fontSize: '17px',
+          border: '1px solid rgba(74, 85, 104, 0.3)',
+          borderRadius: '24px',
+          resize: 'none',
+          background: 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          outline: 'none',
+          transition: 'all 0.2s ease',
+          fontFamily: 'inherit',
+          lineHeight: '1.5',
+          overflow: 'hidden',
+          overflowY: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
+        }}
+        className="star-textarea-no-scrollbar"
+        onFocus={(e) => {
+          e.target.style.borderColor = 'rgba(74, 85, 104, 0.5)';
+          e.target.style.boxShadow = '0 0 0 3px rgba(74, 85, 104, 0.1)';
+        }}
+        onBlur={(e) => {
+          e.target.style.borderColor = 'rgba(74, 85, 104, 0.3)';
+          e.target.style.boxShadow = 'none';
+        }}
+      />
+    </div>
+  );
+  
+  return (
+    <div 
+      className="star-input-panel"
+      style={{
+        width: '100%',
+        maxWidth: '900px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '24px',
+        alignItems: 'center'
+      }}
+    >
+      <div style={{
+        display: 'flex',
+        gap: '24px',
+        width: '100%',
+        justifyContent: 'center',
+        flexWrap: 'wrap'
+      }}>
+        {topRow.map(renderField)}
+      </div>
+      
+      <div style={{
+        display: 'flex',
+        gap: '24px',
+        width: '100%',
+        justifyContent: 'center',
+        flexWrap: 'wrap'
+      }}>
+        {bottomRow.map(renderField)}
+      </div>
+      
+      <button
+        onClick={onModeSwitch}
+        style={{
+          marginTop: '4px',
+          padding: '10px 16px',
+          fontSize: '15px',
+          color: '#86868B',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          transition: 'color 0.2s ease'
+        }}
+        onMouseEnter={(e) => e.target.style.color = '#1D1D1F'}
+        onMouseLeave={(e) => e.target.style.color = '#86868B'}
+      >
+        일반 텍스트로 입력하기
+      </button>
+    </div>
+  );
+});
+
 function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const location = useLocation();
+  const navigate = useNavigate();
   const [screen, setScreen] = useState('start');
   const [animationComplete, setAnimationComplete] = useState(false);
   const [skipIntro, setSkipIntro] = useState(false);
  
   // Process step tracking
   const [currentProcessStep, setCurrentProcessStep] = useState(0);
-  const PROCESS_STEPS = ['회사정보', '이력서분석', '경험구체화 및 에피소드생성', '계획서 생성', '자소서작성', '최종검토'];
+  const PROCESS_STEPS = ['경험구체화', '경험정리', '계획서 생성', '자소서 생성', '최종검토'];  
   const [showPlanPopup, setShowPlanPopup] = useState(false);
   const [showPlanTransitionPopup, setShowPlanTransitionPopup] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [error, setError] = useState(null);
   const [questionCount, setQuestionCount] = useState(0);
+  const [currentProjectId, setCurrentProjectId] = useState(null);
+  const [currentQuestionId, setCurrentQuestionId] = useState(null);
   const [currentExperienceStep, setCurrentExperienceStep] = useState(1);
   const [currentParagraphId, setCurrentParagraphId] = useState(null);
   const [editedParagraphText, setEditedParagraphText] = useState('');
@@ -943,7 +1164,48 @@ const [currentQuestionHint, setCurrentQuestionHint] = useState('');
 const [showHintTooltip, setShowHintTooltip] = useState(false);
 const [hintTooltipPosition, setHintTooltipPosition] = useState({ x: 0, y: 0 });
 
-// v25.3: STAR 입력 시스템
+// 객관식 경험 추출 관련 state
+const [currentPhaseNumber, setCurrentPhaseNumber] = useState(0);
+const [showMcqModal, setShowMcqModal] = useState(false);
+const [mcqStep, setMcqStep] = useState(1);
+const [mcqQuestion, setMcqQuestion] = useState('');
+const [mcqOptions, setMcqOptions] = useState([]);
+const [mcqSelections, setMcqSelections] = useState([]);
+const [mcqLoading, setMcqLoading] = useState(false);
+const [mcqGeneratedAnswer, setMcqGeneratedAnswer] = useState('');
+const [mcqShowResult, setMcqShowResult] = useState(false);
+const [mcqCurrentField, setMcqCurrentField] = useState('');
+const [mcqStakeholderQuestion, setMcqStakeholderQuestion] = useState('');
+const [mcqMainQuestion, setMcqMainQuestion] = useState('');
+
+// 메인질문 상황 재제시 관련 state
+const [showSituationSelection, setShowSituationSelection] = useState(false);
+const [situationOptions, setSituationOptions] = useState([]);
+const [situationCoreLogic, setSituationCoreLogic] = useState('');
+const [situationLoading, setSituationLoading] = useState(false);
+
+// STAR 객관식 진행 관련 state
+const [showStarMcq, setShowStarMcq] = useState(false);
+const [starMcqType, setStarMcqType] = useState(''); // 'S' | 'T' | 'A' | 'R'
+const [starMcqQuestion, setStarMcqQuestion] = useState('');
+const [starMcqOptions, setStarMcqOptions] = useState([]);
+const [starMcqLoading, setStarMcqLoading] = useState(false);
+const [starMcqSelections, setStarMcqSelections] = useState([]); // 이전 선택들 저장
+const [starMcqAnswers, setStarMcqAnswers] = useState({}); // { S: '...', T: '...', A: '...', R: '...' }
+// v3.0: 중첩 심화형 추가 state
+const [depthSelections, setDepthSelections] = useState([]); // 현재 STAR 내 심화 선택들
+const [previousSelections, setPreviousSelections] = useState([]); // 완료된 STAR들 [{type, summary, fullAnswer}, ...]
+const [currentDepth, setCurrentDepth] = useState(1); // 현재 심화 단계
+const [contextSummary, setContextSummary] = useState(''); // 누적 요약 (질문에 표시용)
+const [isCategory, setIsCategory] = useState(false); // R 카테고리 선택 여부
+// 객관식 보기 편집 모드 state// 객관식 보기 편집 모드 state
+const [editingOptionId, setEditingOptionId] = useState(null); // 현재 편집 중인 옵션 ID
+// 객관식 선택 state (제출 전 임시 저장)
+const [selectedSituationId, setSelectedSituationId] = useState(null);
+const [selectedStarOptionId, setSelectedStarOptionId] = useState(null);
+const [selectedMcqOptionId, setSelectedMcqOptionId] = useState(null);
+
+
 // v25.3: STAR 입력 시스템
 const [inputFields, setInputFields] = useState(null);
 const [starInputs, setStarInputs] = useState({
@@ -953,6 +1215,658 @@ const [starInputs, setStarInputs] = useState({
   result: ''
 });
 const [inputMode, setInputMode] = useState('text');
+const handleModeSwitch = useCallback(() => setInputMode('text'), []);
+
+// ============================================
+// 메인질문 상황 재제시 함수들
+// ============================================
+
+// 메인질문 🖐️ 클릭 시 호출
+const handleMainQuestionHelp = async () => {
+  setSituationLoading(true);
+  setShowSituationSelection(true);
+  
+  try {
+    // 현재 메인 질문 가져오기
+    const currentMainQuestion = chatHistory.length > 0 
+      ? chatHistory[chatHistory.length - 1].message 
+      : '';
+    
+  // 현재 선택된 경험 카드 정보 가져오기
+  const currentTopicIndex = currentExperienceStep - 1;
+  const selectedIndex = state.selectedExperiencesIndices[currentTopicIndex];
+  const selectedExperience = state.selectedExperiences?.[selectedIndex];
+  const currentWhySelected = selectedExperience?.whySelected || {};
+  
+  console.log('[handleMainQuestionHelp] selectedExperience:', selectedExperience);
+  console.log('[handleMainQuestionHelp] state.companyInfo:', state.companyInfo);
+  
+  const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/regenerate-main-question`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      whySelected: currentWhySelected,
+      currentMainQuestion: currentMainQuestion,
+      companyInfo: {
+        company: state.companyInfo?.company || '',
+        jobTitle: state.companyInfo?.jobTitle || ''
+      },
+      selectedCard: {
+        company: selectedExperience?.company || '',
+        description: selectedExperience?.description || ''
+      },
+      projectId: currentProjectId,
+      questionId: currentQuestionId
+    })
+  });
+    
+    const data = await response.json();
+    if (data.success) {
+      setSituationOptions(data.situations || []);
+      setSituationCoreLogic(data.coreLogic || '');
+    } else {
+      console.error('상황 재제시 실패:', data.error);
+    }
+  } catch (error) {
+    console.error('상황 재제시 API 호출 실패:', error);
+  } finally {
+    setSituationLoading(false);
+  }
+};
+
+// 상황 선택 시 호출
+const handleSituationSelect = async (selectedSituation) => {
+  setSituationLoading(true);
+  
+  try {
+    const currentTopicIndex = currentExperienceStep - 1;
+    const selectedIndex = state.selectedExperiencesIndices[currentTopicIndex];
+    const selectedExperience = state.selectedExperiences?.[selectedIndex];
+    const currentWhySelected = selectedExperience?.whySelected || {};
+    
+    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/apply-situation-selection`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        whySelected: currentWhySelected,
+        selectedSituation: selectedSituation,
+        companyInfo: {
+          company: state.companyInfo?.company || '',
+          jobTitle: state.companyInfo?.jobTitle || ''
+        },
+        selectedCard: {
+          company: selectedExperience?.company || '',
+          description: selectedExperience?.description || ''
+        },
+        currentPhase: currentPhaseNumber,
+        projectId: currentProjectId,
+        questionId: currentQuestionId
+      })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      // 메인질문 업데이트 (chatHistory에 반영)
+      if (data.mainQuestion) {
+        setChatHistory(prev => {
+          const newHistory = [...prev];
+          if (newHistory.length > 0) {
+            newHistory[newHistory.length - 1] = {
+              ...newHistory[newHistory.length - 1],
+              message: data.mainQuestion
+            };
+          }
+          return newHistory;
+        });
+      }
+      
+      // STAR 질문 업데이트
+      if (data.starQuestions && inputFields) {
+        const updatedFields = inputFields.map(field => {
+          const starKey = field.key.charAt(0).toUpperCase(); // situation -> S
+          if (data.starQuestions[starKey]) {
+            return {
+              ...field,
+              question: data.starQuestions[starKey]
+            };
+          }
+          return field;
+        });
+        setInputFields(updatedFields);
+        
+        // starDisplayTexts도 업데이트
+        const newDisplayTexts = {};
+        updatedFields.forEach(field => {
+          newDisplayTexts[field.key] = {
+            line1: field.question || '',
+            line2: field.subLabel || ''
+          };
+        });
+        setStarDisplayTexts(newDisplayTexts);
+      }
+      
+      // 화면 전환 (상황 선택 화면 닫기)
+      setShowSituationSelection(false);
+      setSituationOptions([]);
+    } else {
+      console.error('상황 적용 실패:', data.error);
+    }
+  } catch (error) {
+    console.error('상황 적용 API 호출 실패:', error);
+  } finally {
+    setSituationLoading(false);
+  }
+};
+
+// 상황 재제시 새로고침
+const handleSituationRefresh = () => {
+  handleMainQuestionHelp();
+};
+
+// ============================================
+// STAR 객관식 함수들
+// ============================================
+
+// STAR 🖐️ 클릭 시 호출
+const handleStarMcqStart = async (starType) => {
+  setStarMcqLoading(true);
+  setShowStarMcq(true);
+  setStarMcqType(starType);
+  // v3.0: 새 STAR 시작 시 심화 선택 초기화
+  setDepthSelections([]);
+  setCurrentDepth(1);
+  setContextSummary('');
+  setIsCategory(false);
+  
+  try {
+    const currentTopicIndex = currentExperienceStep - 1;
+    const selectedIndex = state.selectedExperiencesIndices[currentTopicIndex];
+    const selectedExperience = state.selectedExperiences?.[selectedIndex];
+    const currentWhySelected = selectedExperience?.whySelected || {};
+    
+    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        starType: starType,
+        currentPhase: ['S', 'T', 'A', 'R'].indexOf(starType) + 1,
+        previousSelections: previousSelections,
+        depthSelections: [],
+        whySelected: currentWhySelected,
+        selectedCard: {
+          company: selectedExperience?.company || '',
+          description: selectedExperience?.description || ''
+        },
+        companyInfo: {
+          company: state.companyInfo?.company || '',
+          jobTitle: state.companyInfo?.jobTitle || ''
+        },
+        projectId: currentProjectId,
+        questionId: currentQuestionId
+      })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      setStarMcqQuestion(data.question || '');
+      setStarMcqOptions(data.options || []);
+      setCurrentDepth(data.depth || 1);
+      setContextSummary(data.contextSummary || '');
+      setIsCategory(data.isCategory || false);
+    } else {
+      console.error('STAR 객관식 생성 실패:', data.error);
+    }
+  } catch (error) {
+    console.error('STAR 객관식 API 호출 실패:', error);
+  } finally {
+    setStarMcqLoading(false);
+  }
+};
+
+// STAR 객관식 선택 시 호출 (v3.0: 심화 계속, 자동 이동 없음)
+const handleStarMcqSelect = async (selectedOption) => {
+  const currentStarType = starMcqType;
+  const currentQuestion = starMcqQuestion;
+  
+  setStarMcqLoading(true);
+  setStarMcqOptions([]);
+  setStarMcqQuestion('다음 질문을 준비하고 있습니다...');
+  
+  try {
+    const currentTopicIndex = currentExperienceStep - 1;
+    const selectedIndex = state.selectedExperiencesIndices[currentTopicIndex];
+    const selectedExperience = state.selectedExperiences?.[selectedIndex];
+    const currentWhySelected = selectedExperience?.whySelected || {};
+    
+    // 심화 계속 (isComplete: false)
+    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq-answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        starType: currentStarType,
+        question: currentQuestion,
+        selectedOption: selectedOption,
+        depthSelections: depthSelections,
+        isComplete: false,
+        previousSelections: previousSelections,
+        whySelected: currentWhySelected,
+        selectedCard: {
+          company: selectedExperience?.company || '',
+          description: selectedExperience?.description || ''
+        },
+        companyInfo: {
+          company: state.companyInfo?.company || '',
+          jobTitle: state.companyInfo?.jobTitle || ''
+        },
+        projectId: currentProjectId,
+        questionId: currentQuestionId
+      })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      // 심화 선택 저장
+      const newDepthSelections = data.depthSelections || [...depthSelections, { question: currentQuestion, selected: selectedOption.text }];
+      setDepthSelections(newDepthSelections);
+      
+      // 다음 심화 질문 요청
+      await fetchNextDepthQuestion(currentStarType, newDepthSelections);
+    } else {
+      console.error('STAR 심화 선택 저장 실패:', data.error);
+      setStarMcqLoading(false);
+    }
+  } catch (error) {
+    console.error('STAR 심화 API 호출 실패:', error);
+    setStarMcqLoading(false);
+  }
+};
+
+// 다음 심화 질문 가져오기
+const fetchNextDepthQuestion = async (starType, currentDepthSelections) => {
+  try {
+    const currentTopicIndex = currentExperienceStep - 1;
+    const selectedIndex = state.selectedExperiencesIndices[currentTopicIndex];
+    const selectedExperience = state.selectedExperiences?.[selectedIndex];
+    const currentWhySelected = selectedExperience?.whySelected || {};
+    
+    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        starType: starType,
+        currentPhase: ['S', 'T', 'A', 'R'].indexOf(starType) + 1,
+        previousSelections: previousSelections,
+        depthSelections: currentDepthSelections,
+        whySelected: currentWhySelected,
+        selectedCard: {
+          company: selectedExperience?.company || '',
+          description: selectedExperience?.description || ''
+        },
+        companyInfo: {
+          company: state.companyInfo?.company || '',
+          jobTitle: state.companyInfo?.jobTitle || ''
+        },
+        projectId: currentProjectId,
+        questionId: currentQuestionId
+      })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      setStarMcqQuestion(data.question || '');
+      setStarMcqOptions(data.options || []);
+      setCurrentDepth(data.depth || currentDepthSelections.length + 1);
+      setContextSummary(data.contextSummary || '');
+      setIsCategory(data.isCategory || false);
+    } else {
+      console.error('STAR 심화 질문 생성 실패:', data.error);
+    }
+  } catch (error) {
+    console.error('STAR 심화 질문 API 호출 실패:', error);
+  } finally {
+    setStarMcqLoading(false);
+  }
+};
+
+// "다음 질문으로 넘어가기" 클릭 시 (현재 STAR 완료 → 다음 STAR로)
+const handleStarMcqNextStar = async () => {
+  const currentStarType = starMcqType;
+  
+  setStarMcqLoading(true);
+  setStarMcqQuestion('답변을 정리하고 있습니다...');
+  setStarMcqOptions([]);
+  
+  try {
+    const currentTopicIndex = currentExperienceStep - 1;
+    const selectedIndex = state.selectedExperiencesIndices[currentTopicIndex];
+    const selectedExperience = state.selectedExperiences?.[selectedIndex];
+    const currentWhySelected = selectedExperience?.whySelected || {};
+    
+    // 현재 STAR 완료 처리 (isComplete: true)
+    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq-answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        starType: currentStarType,
+        question: starMcqQuestion,
+        selectedOption: depthSelections.length > 0 
+        ? { text: depthSelections[depthSelections.length - 1].selected }
+        : { text: '' },      
+          depthSelections: depthSelections,
+        isComplete: true,
+        previousSelections: previousSelections,
+        whySelected: currentWhySelected,
+        selectedCard: {
+          company: selectedExperience?.company || '',
+          description: selectedExperience?.description || ''
+        },
+        companyInfo: {
+          company: state.companyInfo?.company || '',
+          jobTitle: state.companyInfo?.jobTitle || ''
+        },
+        projectId: currentProjectId,
+        questionId: currentQuestionId
+      })
+    });
+    
+    const data = await response.json();
+    if (data.success && data.isComplete) {
+      // 완료된 STAR를 previousSelections에 추가
+      const completedStar = {
+        type: currentStarType,
+        summary: data.summary || '',
+        fullAnswer: data.fullAnswer || ''
+      };
+      const newPreviousSelections = [...previousSelections, completedStar];
+      setPreviousSelections(newPreviousSelections);
+      
+      // STAR 입력창에 답변 자동 채움
+      const fieldKeyMap = { 'S': 'situation', 'T': 'task', 'A': 'action', 'R': 'result' };
+      const fieldKey = fieldKeyMap[currentStarType];
+      setStarInputs(prev => ({ ...prev, [fieldKey]: data.fullAnswer || '' }));
+      
+      // starMcqAnswers에도 저장
+      const newAnswers = { ...starMcqAnswers, [currentStarType]: data.fullAnswer || '' };
+      setStarMcqAnswers(newAnswers);
+      
+      // 다음 STAR로 이동
+      const starOrder = ['S', 'T', 'A', 'R'];
+      const currentIndex = starOrder.indexOf(currentStarType);
+      
+      if (currentIndex < 3) {
+        // 다음 STAR 시작
+        const nextStarType = starOrder[currentIndex + 1];
+        setStarMcqType(nextStarType);
+        setDepthSelections([]);
+        setCurrentDepth(1);
+        setContextSummary('');
+        setIsCategory(false);
+        
+        // 다음 STAR 첫 질문 요청
+        await fetchNextStarFirstQuestion(nextStarType, newPreviousSelections);
+      } else {
+        // 모든 STAR 완료
+        handleStarMcqComplete(newAnswers);
+      }
+    } else {
+      console.error('STAR 완료 처리 실패:', data.error);
+      setStarMcqLoading(false);
+    }
+  } catch (error) {
+    console.error('STAR 완료 API 호출 실패:', error);
+    setStarMcqLoading(false);
+  }
+};
+
+// 다음 STAR 첫 질문 가져오기
+const fetchNextStarFirstQuestion = async (starType, newPreviousSelections) => {
+  try {
+    const currentTopicIndex = currentExperienceStep - 1;
+    const selectedIndex = state.selectedExperiencesIndices[currentTopicIndex];
+    const selectedExperience = state.selectedExperiences?.[selectedIndex];
+    const currentWhySelected = selectedExperience?.whySelected || {};
+    
+    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        starType: starType,
+        currentPhase: ['S', 'T', 'A', 'R'].indexOf(starType) + 1,
+        previousSelections: newPreviousSelections,
+        depthSelections: [],
+        whySelected: currentWhySelected,
+        selectedCard: {
+          company: selectedExperience?.company || '',
+          description: selectedExperience?.description || ''
+        },
+        companyInfo: {
+          company: state.companyInfo?.company || '',
+          jobTitle: state.companyInfo?.jobTitle || ''
+        },
+        projectId: currentProjectId,
+        questionId: currentQuestionId
+      })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      setStarMcqQuestion(data.question || '');
+      setStarMcqOptions(data.options || []);
+      setCurrentDepth(data.depth || 1);
+      setContextSummary(data.contextSummary || '');
+      setIsCategory(data.isCategory || false);
+    } else {
+      console.error('다음 STAR 질문 생성 실패:', data.error);
+    }
+  } catch (error) {
+    console.error('다음 STAR 질문 API 호출 실패:', error);
+  } finally {
+    setStarMcqLoading(false);
+  }
+};
+
+// STAR 객관식 완료 시 호출
+const handleStarMcqComplete = async (answers) => {
+  try {
+    const currentTopicIndex = currentExperienceStep - 1;
+    const selectedIndex = state.selectedExperiencesIndices[currentTopicIndex];
+    const selectedExperience = state.selectedExperiences?.[selectedIndex];
+    
+    await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/complete-star-mcq`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        starAnswers: answers,
+        selectedCard: {
+          company: selectedExperience?.company || '',
+          description: selectedExperience?.description || ''
+        },
+        companyInfo: {
+          company: state.companyInfo?.company || '',
+          jobTitle: state.companyInfo?.jobTitle || ''
+        },
+        projectId: currentProjectId,
+        questionId: currentQuestionId
+      })
+    });
+    
+    // 화면 전환 (STAR 객관식 화면 닫기)
+    setShowStarMcq(false);
+    setStarMcqType('');
+    setStarMcqQuestion('');
+    setStarMcqOptions([]);
+    setStarMcqSelections([]);
+    setDepthSelections([]);
+    setPreviousSelections([]);
+    setCurrentDepth(1);
+    setContextSummary('');
+  } catch (error) {
+    console.error('STAR 완료 API 호출 실패:', error);
+  }
+};
+
+// STAR 객관식 새로고침
+const handleStarMcqRefresh = () => {
+  setStarMcqLoading(true);
+  setStarMcqOptions([]);
+  setStarMcqQuestion('다른 선택지를 준비하고 있습니다...');
+  fetchNextDepthQuestion(starMcqType, depthSelections);
+};
+
+// STAR 객관식 취소 (원래 화면으로)
+const handleStarMcqCancel = () => {
+  setShowStarMcq(false);
+  setStarMcqType('');
+  setStarMcqQuestion('');
+  setStarMcqOptions([]);
+  setDepthSelections([]);
+  setPreviousSelections([]);
+  setCurrentDepth(1);
+  setContextSummary('');
+};
+
+// 상황 선택 취소 (원래 화면으로)
+const handleSituationCancel = () => {
+  setShowSituationSelection(false);
+  setSituationOptions([]);
+};
+
+// 객관식 경험 추출 함수들
+const handleStartMcq = async (fieldKey, stakeholderQuestion) => {
+  setMcqLoading(true);
+  try {
+    // 현재 메인 질문 가져오기
+    const mainQ = chatHistory.length > 0 ? chatHistory[chatHistory.length - 1].message : '';
+    setMcqMainQuestion(mainQ);
+    
+    // 현재 선택된 경험 카드의 whySelected 가져오기
+    const currentTopicIndex = currentExperienceStep - 1;
+    const selectedIndex = state.selectedExperiencesIndices[currentTopicIndex];
+    const selectedExperience = state.selectedExperiences?.[selectedIndex];
+    const currentWhySelected = selectedExperience?.whySelected || '';
+    
+    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-mcq`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        whySelected: currentWhySelected,
+        phase: currentPhaseNumber,
+        mainQuestion: mainQ,
+        stakeholderQuestion: stakeholderQuestion,
+        questionStep: 1,
+        previousSelections: []
+      })
+    });
+    const data = await response.json();
+    if (data.success) {
+      setMcqQuestion(data.question);
+      setMcqOptions(data.options || []);
+      setMcqStep(1);
+    } else {
+      console.error('MCQ 생성 실패:', data.error);
+      setShowMcqModal(false);
+    }
+  } catch (error) {
+    console.error('MCQ API 호출 실패:', error);
+    setShowMcqModal(false);
+  } finally {
+    setMcqLoading(false);
+  }
+};
+
+const handleMcqSelect = async (selectedOption) => {
+  const newSelection = {
+    question: mcqQuestion,
+    selected: selectedOption.text
+  };
+  const updatedSelections = [...mcqSelections, newSelection];
+  setMcqSelections(updatedSelections);
+  
+  if (mcqStep < 3) {
+    // 다음 단계 질문 요청
+    setMcqLoading(true);
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-mcq`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          whySelected: state.analysisData?.whySelected || '',
+          phase: currentPhaseNumber,
+          mainQuestion: mcqMainQuestion,
+          stakeholderQuestion: mcqStakeholderQuestion,
+          questionStep: mcqStep + 1,
+          previousSelections: updatedSelections
+        })
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        setMcqQuestion(data.question);
+        setMcqOptions(data.options || []);
+        setMcqStep(mcqStep + 1);
+      }
+    } catch (error) {
+      console.error('MCQ 다음 단계 실패:', error);
+    } finally {
+      setMcqLoading(false);
+    }
+  } else {
+    // 3단계 완료, 답변 생성
+    handleMcqGenerateAnswer(updatedSelections);
+  }
+};
+
+const handleMcqGenerateAnswer = async (selections) => {
+  setMcqLoading(true);
+  try {
+    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-mcq-answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        whySelected: state.analysisData?.whySelected || '',
+        phase: currentPhaseNumber,
+        mainQuestion: mcqMainQuestion,
+        stakeholderQuestion: mcqStakeholderQuestion,
+        selections: selections
+      })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      setMcqGeneratedAnswer(data.generatedAnswer);
+      setMcqShowResult(true);
+    }
+  } catch (error) {
+    console.error('MCQ 답변 생성 실패:', error);
+  } finally {
+    setMcqLoading(false);
+  }
+};
+
+const handleMcqConfirm = () => {
+  // 해당 STAR 입력창에 답변 자동 입력
+  setStarInputs(prev => ({
+    ...prev,
+    [mcqCurrentField]: mcqGeneratedAnswer
+  }));
+  setShowMcqModal(false);
+  // 상태 초기화
+  setMcqStep(1);
+  setMcqSelections([]);
+  setMcqShowResult(false);
+  setMcqGeneratedAnswer('');
+  setMcqQuestion('');
+  setMcqOptions([]);
+};
+
+const handleMcqRegenerate = () => {
+  // Step 1부터 다시 시작
+  setMcqStep(1);
+  setMcqSelections([]);
+  setMcqShowResult(false);
+  setMcqGeneratedAnswer('');
+  handleStartMcq(mcqCurrentField, mcqStakeholderQuestion);
+};
 
 // STAR 타이프라이터 효과용 state
 const [starDisplayTexts, setStarDisplayTexts] = useState({
@@ -969,7 +1883,364 @@ const [isStarTextAnimating, setIsStarTextAnimating] = useState(false);
   const chatBoxRef = useRef(null);
   const aiSuggestionPopupRef = useRef(null);
   const originalTextRef = useRef(null);
-  const editorRef = useRef(null);
+
+// URL 파라미터로 딥글 플로우 진입 처리
+// URL 파라미터로 딥글 플로우 진입 처리
+useEffect(() => {
+  // 문답 화면에서는 이 useEffect 실행 안 함 (리렌더링 최적화)
+  if (screen === 'experience-extraction' || screen === 'summarized-episode-review' || screen === 'plan-view' || screen === 'cover-letter-view') {
+    return;
+  }
+  
+  const urlParams = new URLSearchParams(location.search);
+  const flow = urlParams.get('flow');
+  const projectId = urlParams.get('projectId');
+  const questionId = urlParams.get('questionId');
+  const restoreParam = urlParams.get('restore');
+  const statusParam = urlParams.get('status');
+  
+  // ✅ state에 저장 (다른 함수에서 사용하기 위해)
+  if (projectId) setCurrentProjectId(projectId);
+  if (questionId) setCurrentQuestionId(questionId);
+  
+  // flow=experience-extraction 처리 (문답 화면)
+
+  // flow=experience-extraction 처리 (문답 화면)
+  if (flow === 'experience-extraction' && projectId && questionId) {
+    const savedData = localStorage.getItem('deepgl_selected_experience');
+    if (savedData) {
+      const parsedData = JSON.parse(savedData);
+      console.log('[DEBUG] parsedData:', parsedData);
+      const { selectedCard, selectedIndex, resumeId, analysisId, selectedExperiences, questionTopics, companyInfo, conversationState, talentProfile, coreCompetency, userId } = parsedData;     
+       console.log('[DEBUG] resumeId:', resumeId);      console.log('[DEBUG] analysisId:', analysisId);
+      console.log('[DEBUG] selectedIndex:', selectedIndex);
+      console.log('[DEBUG] conversationState:', conversationState);
+      console.log('[DEBUG] companyInfo from localStorage:', companyInfo);
+      
+// companyInfo가 없거나 빈 경우 selectedCard에서 가져오기
+let resolvedCompanyInfo = (companyInfo && companyInfo.company) 
+? companyInfo 
+: (selectedCard?.companyInfo && selectedCard.companyInfo.company)
+  ? selectedCard.companyInfo
+  : { company: '', jobTitle: '', jobTasks: '', jobRequirements: '' };
+
+// 🆕 companyInfo가 여전히 비어있으면 projectId로 DB에서 조회
+if (!resolvedCompanyInfo.company && projectId) {
+fetch(
+`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/projects/${projectId}`)
+  .then(res => res.json())
+  .then(projectData => {
+    if (projectData.project) {
+      const fetchedCompanyInfo = {
+        company: projectData.project.company || '',
+        jobTitle: projectData.project.jobTitle || '',
+        jobTasks: projectData.project.jobTasks || '',
+        jobRequirements: projectData.project.jobRequirements || ''
+      };
+      console.log('[DEBUG] companyInfo fetched from DB:', fetchedCompanyInfo);
+      dispatch({
+        type: 'SET_ANALYSIS',
+        companyInfo: fetchedCompanyInfo
+      });
+    }
+  })
+  .catch(err => console.error('[DEBUG] Failed to fetch project info:', err));
+}
+
+console.log('[DEBUG] resolvedCompanyInfo:', resolvedCompanyInfo);
+
+// 상태 업데이트
+dispatch({
+type: 'SET_ANALYSIS',
+resumeId: resumeId,
+analysisId: analysisId,
+analysisData: { selectedExperiences: selectedExperiences },
+selectedExperiences: selectedExperiences,
+selectedExperiencesIndices: [selectedIndex ?? 0],
+questionTopics: questionTopics || [selectedCard?.topic],
+companyInfo: resolvedCompanyInfo,
+talentProfile: talentProfile || '',
+coreCompetency: coreCompetency || ''
+});
+    
+      // 화면 전환
+    
+
+      setScreen('experience-extraction');
+      setCurrentExperienceStep(1);
+      
+      // localStorage 정리
+      localStorage.removeItem('deepgl_selected_experience');
+      
+      // URL 정리
+      window.history.replaceState({}, '', '/');
+      
+     // 대화 상태 복원 (restore=true인 경우)
+     if (restoreParam === 'true' && conversationState) {
+      console.log('[DEBUG] Restoring conversation state, questionCount:', conversationState.questionCount);
+      setQuestionCount(conversationState.questionCount || 0);
+      
+      // 이전 답변들로 chatHistory 복원
+      let restoredHistory = [];
+      if (conversationState.collectedAnswers && conversationState.collectedAnswers.length > 0) {
+        conversationState.collectedAnswers.forEach((answer, idx) => {
+          restoredHistory.push({ sender: '딥글', message: `질문 ${idx + 1}` });
+          restoredHistory.push({ sender: '나', message: answer.answer || answer });
+        });
+        setChatHistory(restoredHistory);
+      }
+      
+      // 완료된 문답이면 에피소드 자동 생성
+      if (conversationState.isComplete) {
+        if (conversationState.episodeData) {
+          setScreen('summarized-episode-review');
+        } else {
+          // 직접 API 호출 (state 대신 복원된 값 사용)
+      // 직접 API 호출 (state 대신 복원된 값 사용)
+      const topicToUse = questionTopics?.[0] || selectedCard?.topic || '지원동기';
+      startLoading('generate-episode', { company: companyInfo?.company, topic: topicToUse });
+      dispatch({ type: 'SET_LOADING', loading: true, message: '' });
+      setScreen('experience-extraction');
+      
+      fetch('https://youngsun-xi.vercel.app/generate-episode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              resumeId: resumeId,
+              analysisId: analysisId,
+              chatHistory: restoredHistory,
+              questionTopics: questionTopics || [selectedCard?.topic],
+              currentTopic: topicToUse,
+              selectedExperienceIndices: [selectedIndex ?? 0],
+              projectId: projectId,
+              questionId: questionId
+            }),
+          })
+          .then(res => res.json())
+          .then(data => {
+            stopLoading();
+            if (data.episode) {
+              dispatch({ type: 'SET_SUMMARIZED_EPISODES', summarizedEpisodes: [{ topic: topicToUse, episode: data.episode, company: data.company || companyInfo?.company || '', competency: data.competency || selectedCard?.competency || '', talentProfile: talentProfile || '', coreCompetency: coreCompetency || data.competency || selectedCard?.competency || '' }] });           
+                 setScreen('summarized-episode-review');          
+                  } else {           
+                       setError('에피소드 생성에 실패했습니다.');
+            }
+          })
+          .catch(err => {
+            stopLoading();
+            setError('에피소드 생성 중 오류: ' + err.message);
+          });
+        }
+        return;
+      }
+      
+      // ✅ 저장된 질문이 있으면 바로 표시 (API 호출 X)
+      if (conversationState.lastQuestion) {
+        console.log('[DEBUG] Restoring last question from DB');
+        setChatHistory(prev => [...prev, { 
+          sender: '딥글', 
+          message: conversationState.lastQuestion, 
+          hint: conversationState.lastHint || '' 
+        }]);
+        if (conversationState.lastHint) {
+          setCurrentQuestionHint(conversationState.lastHint);
+        }
+        // phaseNumber 복원
+        if (conversationState.lastPhaseNumber) {
+          setCurrentPhaseNumber(conversationState.lastPhaseNumber);
+          console.log('[DEBUG] Restored phaseNumber:', conversationState.lastPhaseNumber);
+        
+        }
+        if (conversationState.lastInputFields) {
+          setInputFields(conversationState.lastInputFields);
+          setInputMode('star');
+          
+          // ✅ 즉시 placeholder 설정
+          const targets = {};
+          conversationState.lastInputFields.forEach(field => {
+            targets[field.key] = {
+              line1: field.placeholder?.line1 || '',
+              line2: field.placeholder?.line2 || ''
+            };
+          });
+          setStarDisplayTexts(targets);
+        }
+        return;
+      }
+    }
+  
+    // 질문 생성 API 직접 호출 (새로 시작하거나 저장된 질문 없을 때)
+    setTimeout(async () => {
+      try {
+        dispatch({ type: 'SET_CHAT_LOADING', chatLoading: true });
+        
+        const response = await fetch('https://youngsun-xi.vercel.app/generate-question', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            resumeId: resumeId || '',
+            analysisId: analysisId || '',
+            analysisData: { selectedExperiences: selectedExperiences },
+            selectedExperienceIndices: [selectedIndex ?? 0],
+            chatHistory: [],
+            questionTopics: questionTopics || [selectedCard?.topic],
+            topicIndex: 0,
+            step: conversationState?.questionCount ? conversationState.questionCount + 1 : 1,
+            projectId: projectId,
+            questionId: questionId
+          }),
+        });
+        
+        const data = await response.json();
+        console.log('generate-question 응답:', data);
+        
+        dispatch({ type: 'SET_CHAT_LOADING', chatLoading: false });
+        
+        if (data.question) {
+          setChatHistory(prev => [...prev, { sender: '딥글', message: data.question, hint: data.hint || '' }]);
+          if (data.hint) {
+            setCurrentQuestionHint(data.hint);
+          }
+          if (data.inputFields) {
+            setInputFields(data.inputFields);
+            setInputMode('star');
+            
+            // ✅ 즉시 placeholder 설정
+            const targets = {};
+            data.inputFields.forEach(field => {
+              targets[field.key] = {
+                line1: field.placeholder?.line1 || '',
+                line2: field.placeholder?.line2 || ''
+              };
+            });
+            setStarDisplayTexts(targets);
+          }
+          setQuestionCount(conversationState?.questionCount ? conversationState.questionCount + 1 : 1);
+        }
+      } catch (err) {
+        console.error('질문 생성 실패:', err);
+        dispatch({ type: 'SET_CHAT_LOADING', chatLoading: false });
+      }
+    }, 300);
+  }
+}
+
+// flow=reused-episode 처리 (재활용 에피소드 - Q&A 스킵)
+if (flow === 'reused-episode' && projectId && questionId) {
+  const savedData = localStorage.getItem('deepgl_reused_episode');
+  if (savedData) {
+    const parsedData = JSON.parse(savedData);
+    const { episode, companyInfo, talentProfile, coreCompetency, analysisId, resumeId, questionText } = parsedData;
+    
+    console.log('[DEBUG] Reused episode loaded:', episode);
+    
+    // questionText 사용 (없으면 fallback)
+    const topicHeader = questionText || '자기소개서 문항';
+    
+    // 상태 업데이트 (analysisId, resumeId 포함)
+    dispatch({
+      type: 'SET_ANALYSIS',
+      companyInfo: companyInfo || {},
+      analysisId: analysisId || '',
+      resumeId: resumeId || '',
+      questionTopics: [topicHeader]
+    });
+    
+    dispatch({
+      type: 'SET_SUMMARIZED_EPISODES',
+      summarizedEpisodes: [{
+        topic: topicHeader,
+        episode: typeof episode === 'string' ? episode : episode.content,
+        company: companyInfo?.company || '',
+        competency: coreCompetency || ''
+      }]
+    });
+    
+    // 에피소드 리뷰 화면으로 이동
+    setScreen('summarized-episode-review');
+    
+    // localStorage 정리
+    localStorage.removeItem('deepgl_reused_episode');
+    
+    // URL 정리
+    window.history.replaceState({}, '', '/');
+  }
+}
+
+
+  // flow=restore 처리 (에피소드/계획서/자소서 복원)
+  if (flow === 'restore' && projectId && questionId) {
+    const savedData = localStorage.getItem('deepgl_selected_experience');
+    if (savedData) {
+      const parsedData = JSON.parse(savedData);
+      const { resumeId, analysisId, selectedExperiences, questionTopics, companyInfo, restoreStatus, episodeData, planData, coverLetterData } = parsedData;
+      
+      console.log('[DEBUG] Restoring status:', restoreStatus || statusParam);
+      
+      // 상태 업데이트
+      dispatch({
+        type: 'SET_ANALYSIS',
+        resumeId: resumeId,
+        analysisId: analysisId,
+        analysisData: { selectedExperiences: selectedExperiences },
+        selectedExperiences: selectedExperiences,
+        selectedExperiencesIndices: [0],
+        questionTopics: questionTopics,
+        companyInfo: companyInfo || {}
+      });
+      
+      // 에피소드 데이터 복원
+      if (episodeData) {
+        dispatch({
+          type: 'SET_SUMMARIZED_EPISODES',
+          summarizedEpisodes: episodeData.summarizedEpisodes || [],
+          episodeAnalysis: episodeData.episodeAnalysis || null
+        });
+      }
+      
+      // 계획서 데이터 복원
+      if (planData) {
+        dispatch({
+          type: 'SET_PLAN',
+          plan: planData.plan || '',
+          source: planData.source || []
+        });
+      }
+      
+      // 자소서 데이터 복원
+      if (coverLetterData) {
+        dispatch({
+          type: 'SET_COVER_LETTER',
+          paragraphs: coverLetterData.paragraphs || []
+        });
+      }
+      
+      const status = restoreStatus || statusParam;
+      
+      // 상태에 따라 화면 전환
+      if (status === 'episode') {
+        setScreen('summarized-episode-review');
+      } else if (status === 'plan') {
+        setScreen('plan-view');
+      } else if (status === 'letter' || status === 'done') {
+        setScreen('cover-letter-view');
+      }
+      
+      setCurrentExperienceStep(1);
+      
+      // localStorage 정리
+      localStorage.removeItem('deepgl_selected_experience');
+      
+      // URL 정리
+      window.history.replaceState({}, '', '/');
+    }
+  }
+}, [location.search]);
+
+  
+
+
+const editorRef = useRef(null);
   const proofreadingPopupRef = useRef(null);
 
   // ✅ 동적 로딩 메시지 훅 사용
@@ -1437,6 +2708,13 @@ const typewriterSTARTexts = (fields, onComplete) => {
       setChatHistory([]);
       setQuestionCount(0);
       setCurrentQuestionHint('');
+      
+      console.log('[DEBUG] API 호출 전:', {
+        resumeId: state.resumeId,
+        analysisId: state.analysisId,
+        questionTopics: state.questionTopics,
+        selectedExperiencesIndices: state.selectedExperiencesIndices
+      });
      
       const response = await fetch('https://youngsun-xi.vercel.app/generate-question', {
         method: 'POST',
@@ -1449,7 +2727,9 @@ const typewriterSTARTexts = (fields, onComplete) => {
           chatHistory: [],
           questionTopics: state.questionTopics,
           topicIndex: currentTopicIndex,
-          step: 1
+          step: 1,
+          projectId: currentProjectId,
+          questionId: currentQuestionId
         }),
       });
       if (!response.ok) {
@@ -1485,7 +2765,17 @@ const typewriterSTARTexts = (fields, onComplete) => {
         setInputFields(data.inputFields);
         setInputMode('star');
         setStarInputs({ situation: '', task: '', action: '', result: '' });
-        typewriterSTARTexts(data.inputFields);
+        
+        // ✅ 즉시 placeholder 설정
+        const targets = {};
+        data.inputFields.forEach(field => {
+          targets[field.key] = {
+            line1: field.placeholder?.line1 || '',
+            line2: field.placeholder?.line2 || ''
+          };
+        });
+        setStarDisplayTexts(targets);
+        
         console.log(`[${new Date().toISOString()}] STAR inputFields received:`, data.inputFields);
       }
       
@@ -1530,13 +2820,15 @@ const typewriterSTARTexts = (fields, onComplete) => {
         body: JSON.stringify({
           resumeId: state.resumeId,
           analysisId: state.analysisId,
-          analysisData: state.analysisData,  // ← 이거 추가
+          analysisData: state.analysisData,
           previousAnswer: answer || '',
           selectedExperienceIndices: state.selectedExperiencesIndices,
           chatHistory,
           questionTopics: state.questionTopics,
           topicIndex: currentExperienceStep - 1,
-          step: currentStep
+          step: currentStep,
+          projectId: currentProjectId,
+          questionId: currentQuestionId
         }),
       });
       if (!response.ok) {
@@ -1569,13 +2861,28 @@ const typewriterSTARTexts = (fields, onComplete) => {
         setCurrentQuestionHint(data.hint);
         console.log(`[${new Date().toISOString()}] New hint received: "${data.hint}"`);
       }
-
+      
+      // 객관식 헬프용 phaseNumber 저장
+      if (data.phaseNumber !== undefined) {
+        setCurrentPhaseNumber(data.phaseNumber);
+        console.log(`[${new Date().toISOString()}] Phase number received: ${data.phaseNumber}`);
+      }
     // v25.3: STAR inputFields 업데이트 + 타이프라이터 효과
     if (data.inputFields) {
       setInputFields(data.inputFields);
       setInputMode('star');
       setStarInputs({ situation: '', task: '', action: '', result: '' });
-      typewriterSTARTexts(data.inputFields);
+      
+      // ✅ 즉시 placeholder 설정
+      const targets = {};
+      data.inputFields.forEach(field => {
+        targets[field.key] = {
+          line1: field.placeholder?.line1 || '',
+          line2: field.placeholder?.line2 || ''
+        };
+      });
+      setStarDisplayTexts(targets);
+      
       console.log(`[${new Date().toISOString()}] STAR inputFields updated:`, data.inputFields);
     }
    
@@ -1652,22 +2959,26 @@ const typewriterSTARTexts = (fields, onComplete) => {
     
     setTimeout(() => {
       const currentStep = questionCount;
-      handleGenerateQuestion(userAnswer, currentStep + 1);
       
-      // 입력 리셋
+      // 입력 리셋 (질문 생성 전에 먼저 실행)
       setCurrentAnswer('');
       setStarInputs({ situation: '', task: '', action: '', result: '' });
-      setStarDisplayTexts({
-        situation: { line1: '', line2: '' },
-        task: { line1: '', line2: '' },
-        action: { line1: '', line2: '' },
-        result: { line1: '', line2: '' }
-      });
+      
+      // ✅ STAR 관련 상태 완전 리셋 (새 질문 받기 전 초기화)
+      setInputFields(null);
+      setInputMode('text');
+      setStarDisplayTexts({});
+      
       setIsSubmitting(false);
+      
+      // 질문 생성 (typewriterSTARTexts가 displayTexts를 업데이트함)
+      handleGenerateQuestion(userAnswer, currentStep + 1);
     }, 800);
   };
 
   // ✅ 수정: handleSummarizeEpisodes
+
+
   const handleSummarizeEpisodes = async () => {
     console.log(`[${new Date().toISOString()}] Starting handleSummarizeEpisodes for topic: ${state.questionTopics[currentExperienceStep - 1]}`);
     
@@ -1697,7 +3008,9 @@ const typewriterSTARTexts = (fields, onComplete) => {
           chatHistory,
           questionTopics: state.questionTopics,
           currentTopic,
-          selectedExperienceIndices: state.selectedExperiencesIndices
+          selectedExperienceIndices: state.selectedExperiencesIndices,
+          projectId: currentProjectId,
+          questionId: currentQuestionId
         }),
       });
       if (!response.ok) {
@@ -1722,7 +3035,11 @@ const typewriterSTARTexts = (fields, onComplete) => {
       const newEpisode = {
         topic: currentTopic,
         episode: data.episode,
-        keywords: data.keywords || []
+        keywords: data.keywords || [],
+        company: data.company || state.selectedExperiences?.[state.selectedExperiencesIndices[currentExperienceStep - 1]]?.company || '',
+        competency: data.competency || state.selectedExperiences?.[state.selectedExperiencesIndices[currentExperienceStep - 1]]?.competency || '',
+        talentProfile: state.talentProfile || '',
+        coreCompetency: state.coreCompetency || data.competency || state.selectedExperiences?.[state.selectedExperiencesIndices[currentExperienceStep - 1]]?.competency || ''
       };
       const newEpisodeAnalysis = {
         topic: currentTopic,
@@ -1752,11 +3069,12 @@ const typewriterSTARTexts = (fields, onComplete) => {
         setQuestionCount(0);
       }
       
-      // ✅ 완료 알림 발송
-      sendNotification(
-        '딥글 에피소드 생성 완료',
-        `${currentTopic} 에피소드가 완성되었습니다.`
-      );
+ // ✅ 완료 알림 발송 - 생성 완료 + DB 저장 알림
+ const experienceCompany = state.selectedExperiences?.[selectedIndex]?.company || currentTopic;
+ sendNotification(
+   '딥글 에피소드 생성 완료',
+   `${currentTopic} 에피소드가 완성되었습니다. ${experienceCompany}의 새로운 에피소드가 데이터베이스에 저장되었습니다.`
+ );
       
       console.log(`[${new Date().toISOString()}] Success: Episode generation completed for topic: ${currentTopic}`);
       goToSummarizedEpisodeReview();
@@ -1787,7 +3105,7 @@ const typewriterSTARTexts = (fields, onComplete) => {
     dispatch({ type: 'SET_LOADING', loading: true, message: '' });
     
     try {
-      if (!state.analysisId) {
+      if (!state.analysisId && !currentProjectId && !currentQuestionId) {
         throw new Error('분석 데이터가 없습니다. 다시 시도해주세요.');
       }
       const controller = new AbortController();
@@ -1801,7 +3119,9 @@ const typewriterSTARTexts = (fields, onComplete) => {
           companyInfo: state.companyInfo,
           chatHistory,
           questionTopics: state.questionTopics,
-          summarizedEpisodes: state.summarizedEpisodes
+          summarizedEpisodes: state.summarizedEpisodes,
+          projectId: currentProjectId,
+          questionId: currentQuestionId
         }),
         signal: controller.signal
       });
@@ -1814,6 +3134,9 @@ const typewriterSTARTexts = (fields, onComplete) => {
       } else {
         const sourceArray = Array.isArray(data.source) ? data.source :
                           (typeof data.source === 'string' ? data.source.split(',').map(url => url.trim()) : []);
+        
+        // 🆕 응답에서 company 가져오기 (fallback 처리)
+        const companyName = state.companyInfo?.company || data.company || '';
      
         dispatch({
           type: 'SET_PLAN',
@@ -1828,7 +3151,7 @@ const typewriterSTARTexts = (fields, onComplete) => {
         // ✅ 완료 알림 발송
         sendNotification(
           '딥글 계획서 완료',
-          `${state.companyInfo.company} 자소서 계획서가 준비되었습니다.`
+          `${companyName} 자소서 계획서가 준비되었습니다.`
         );
         
         goToPlanView();
@@ -1846,7 +3169,7 @@ const typewriterSTARTexts = (fields, onComplete) => {
     dispatch({ type: 'SET_LOADING', loading: false, message: '' });
   };
 
-  // ✅ 수정: handleGenerateCoverLetter - 완료 알림 추가
+// ✅ 수정: handleGenerateCoverLetter - 완료 알림 추가
   const handleGenerateCoverLetter = async () => {
     console.log(`[${new Date().toISOString()}] Before /generate-cover-letter:`, {
       resumeId: state.resumeId,
@@ -1858,8 +3181,8 @@ const typewriterSTARTexts = (fields, onComplete) => {
     dispatch({ type: 'SET_LOADING', loading: true, message: '' });
     
     try {
-      if (!state.plan || !state.resumeId || !state.analysisId) {
-        throw new Error('계획서 또는 분석 데이터가 없습니다. 다시 시도해주세요.');
+      if (!state.plan) {
+        throw new Error('계획서가 없습니다. 다시 시도해주세요.');
       }
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000);
@@ -1867,7 +3190,9 @@ const typewriterSTARTexts = (fields, onComplete) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          plan: state.plan
+          plan: state.plan,
+          projectId: currentProjectId,
+          questionId: currentQuestionId
         }),
         signal: controller.signal
       });
@@ -1878,6 +3203,9 @@ const typewriterSTARTexts = (fields, onComplete) => {
         setError(`자소서 생성 실패: ${data.details}`);
         setChatHistory([...chatHistory, { sender: '딥글', message: `자소서 생성 실패: ${data.details}` }]);
       } else {
+        // 🆕 응답에서 company 가져오기 (fallback 처리)
+        const companyName = state.companyInfo?.company || data.company || '';
+        
         dispatch({
           type: 'SET_COVER_LETTER',
           paragraphs: data.paragraphs || []
@@ -1891,15 +3219,15 @@ const typewriterSTARTexts = (fields, onComplete) => {
           suggestions: []
         });
         setChatHistory([...chatHistory, { sender: '딥글', message: '자소서가 완성되었습니다. 문단별로 수정해보세요.' }]);
-        
-        // ✅ 완료 알림 발송
-        sendNotification(
-          '딥글 자소서 완료',
-          `${state.companyInfo.company} 자소서 초안이 완성되었습니다.`
-        );
+  // ✅ 완료 알림 발송 - 생성 완료 + DB 저장 알림
+  sendNotification(
+    '딥글 자소서 완료',
+    `${companyName} 자소서 초안이 완성되었습니다. ${companyName}의 새로운 자기소개서가 데이터베이스에 저장되었습니다.`
+  );
         
         goToCoverLetterView();
       }
+      
     } catch (error) {
       if (error.name === 'AbortError') {
         setError('요청이 너무 오래 걸려 중단되었습니다. 잠시 후 다시 시도해주세요.');
@@ -1908,6 +3236,7 @@ const typewriterSTARTexts = (fields, onComplete) => {
       }
       setChatHistory([...chatHistory, { sender: '딥글', message: '서버에 문제가 생겼습니다...' }]);
     }
+
     
     stopLoading();
     dispatch({ type: 'SET_LOADING', loading: false, message: '' });
@@ -2057,93 +3386,477 @@ const typewriterSTARTexts = (fields, onComplete) => {
   ///end of section 1//
 
 
-  // ✅ 수정: 글래스모피즘 LoadingModal
-  const LoadingModal = ({ message }) => (
-    <div className="loading-modal-overlay" style={{
-      position: 'fixed',
-      top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0, 0, 0, 0.4)',
-      backdropFilter: 'blur(8px)',
-      WebkitBackdropFilter: 'blur(8px)',
+/// ✅ 수정: 전체화면 로딩 (탭바 기준 중앙정렬, 파동 애니메이션)
+const LoadingModal = ({ message }) => (
+  <div style={{
+    position: 'fixed',
+    top: 0,
+    left: '80px',
+    right: 0,
+    bottom: 0,
+    background: '#FBFBFD',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999
+  }}>
+    <div style={{
       display: 'flex',
+      flexDirection: 'column',
       alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 9999
+      gap: '24px'
     }}>
-      <div className="loading-modal" style={{
-        background: 'rgba(255, 255, 255, 0.15)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        borderRadius: '24px',
-        padding: '48px',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-        textAlign: 'center',
-        minWidth: '320px',
-        border: '1px solid rgba(255, 255, 255, 0.3)'
+      <div style={{
+        position: 'relative',
+        width: '80px',
+        height: '80px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}>
-        <div className="loading-indicator" style={{
-          margin: '0 auto 24px auto',
+        <DeepGlLogo size={80} />
+        <div style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
           width: '80px',
           height: '80px',
-          position: 'relative',
+          borderRadius: '50%',
+          border: '1px solid rgba(75, 85, 99, 0.3)',
+          animation: 'loadingPulse1 2.5s ease-out infinite',
+          pointerEvents: 'none'
+        }} />
+        <div style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '80px',
+          height: '80px',
+          borderRadius: '50%',
+          border: '1px solid rgba(75, 85, 99, 0.2)',
+          animation: 'loadingPulse2 2.5s ease-out infinite',
+          animationDelay: '0.8s',
+          pointerEvents: 'none'
+        }} />
+        <div style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '80px',
+          height: '80px',
+          borderRadius: '50%',
+          border: '1px solid rgba(75, 85, 99, 0.1)',
+          animation: 'loadingPulse3 2.5s ease-out infinite',
+          animationDelay: '1.6s',
+          pointerEvents: 'none'
+        }} />
+      </div>
+      <p style={{
+        color: '#4B5563',
+        fontSize: '17px',
+        fontWeight: '500',
+        margin: 0
+      }}>{message}</p>
+    </div>
+  </div>
+);
+
+// 객관식 경험 추출 모달 컴포넌트
+const McqModal = ({ 
+  isOpen, 
+  onClose, 
+  step, 
+  question, 
+  options,
+  setOptions,
+  editingOptionId,
+  setEditingOptionId,
+  selectedMcqOptionId,
+  setSelectedMcqOptionId,
+  loading, 
+  showResult, 
+  generatedAnswer, 
+  stakeholderQuestion,
+  onSelect, 
+  onConfirm, 
+  onRegenerate 
+}) => {
+  if (!isOpen) return null;
+  
+  return (
+    <>
+      <div 
+        className="modal-overlay" 
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.4)',
+          backdropFilter: 'blur(4px)',
+          WebkitBackdropFilter: 'blur(4px)',
+          zIndex: 9998
+        }}
+      />
+      <div style={{
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        background: '#FFFFFF',
+        borderRadius: '20px',
+        padding: '32px',
+        minWidth: '400px',
+        maxWidth: '560px',
+        width: '90%',
+        maxHeight: '80vh',
+        overflowY: 'auto',
+        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2)',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
+        zIndex: 9999
+      }}>
+        {/* 헤더 */}
+        <div style={{
           display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
-          justifyContent: 'center'
+          marginBottom: '24px'
         }}>
-          <DeepGlLogo size={80} />
-          
-          <div style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '80px',
-            height: '80px',
-            borderRadius: '50%',
-            border: '1px solid rgba(255, 255, 255, 0.4)',
-            animation: 'loadingPulse1 2.5s ease-out infinite',
-            pointerEvents: 'none'
-          }} />
-          
-          <div style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '80px',
-            height: '80px',
-            borderRadius: '50%',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            animation: 'loadingPulse2 2.5s ease-out infinite',
-            animationDelay: '0.8s',
-            pointerEvents: 'none'
-          }} />
-          
-          <div style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '80px',
-            height: '80px',
-            borderRadius: '50%',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            animation: 'loadingPulse3 2.5s ease-out infinite',
-            animationDelay: '1.6s',
-            pointerEvents: 'none'
-          }} />
+          <div>
+            <h3 style={{ 
+              margin: 0, 
+              fontSize: '20px', 
+              fontWeight: '700',
+              color: '#1D1D1F'
+            }}>
+              {showResult ? '답변 생성 완료' : `객관식 질문 ${step}/3`}
+            </h3>
+            {!showResult && (
+              <p style={{
+                margin: '4px 0 0 0',
+                fontSize: '13px',
+                color: '#86868B'
+              }}>
+                가장 적합한 선택지를 골라주세요
+              </p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '24px',
+              cursor: 'pointer',
+              color: '#86868B',
+              padding: '4px',
+              lineHeight: 1
+            }}
+          >
+            ×
+          </button>
         </div>
         
-        <p style={{
-          color: '#FFFFFF',
-          fontSize: '17px',
-          fontWeight: '500',
-          margin: 0,
-          textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)'
-        }}>{message}</p>
+        {/* 로딩 상태 */}
+        {loading && (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '48px 0'
+          }}>
+            <div className="loading-spinner" style={{ marginBottom: '16px' }} />
+            <p style={{ color: '#86868B', fontSize: '15px' }}>
+              {showResult ? '답변을 생성하고 있어요...' : '질문을 준비하고 있어요...'}
+            </p>
+          </div>
+        )}
+        
+        {/* 결과 화면 */}
+        {!loading && showResult && (
+          <div>
+            <p style={{
+              fontSize: '15px',
+              color: '#86868B',
+              marginBottom: '12px'
+            }}>
+              이렇게 답하면 될 것 같아요 : <span style={{ color: '#1D1D1F', fontWeight: '500' }}>{stakeholderQuestion}</span>
+            </p>
+            <div style={{
+              padding: '20px',
+              background: 'rgba(74, 85, 104, 0.05)',
+              borderRadius: '12px',
+              marginBottom: '24px'
+            }}>
+              <p style={{
+                margin: 0,
+                fontSize: '16px',
+                lineHeight: '1.7',
+                color: '#1D1D1F'
+              }}>
+                {generatedAnswer}
+              </p>
+            </div>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '12px'
+            }}>
+              <button
+                onClick={onRegenerate}
+                style={{
+                  padding: '14px 28px',
+                  background: 'transparent',
+                  border: '1px solid rgba(74, 85, 104, 0.3)',
+                  borderRadius: '12px',
+                  fontSize: '15px',
+                  fontWeight: '500',
+                  color: '#4A5568',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'rgba(74, 85, 104, 0.05)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'transparent';
+                }}
+              >
+                재생성
+              </button>
+              <button
+                onClick={onConfirm}
+                style={{
+                  padding: '14px 28px',
+                  background: 'linear-gradient(135deg, #4A5568, #2D3748)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  fontSize: '15px',
+                  fontWeight: '500',
+                  color: 'white',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-1px)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(74, 85, 104, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = 'none';
+                }}
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* 질문 & 선택지 */}
+        {!loading && !showResult && (
+          <div>
+            <p style={{
+              fontSize: '17px',
+              fontWeight: '500',
+              color: '#1D1D1F',
+              marginBottom: '20px',
+              lineHeight: '1.6'
+            }}>
+              {question}
+            </p>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px'
+            }}>
+        {options.map((option) => (
+                <div
+                  key={option.id}
+                  onClick={() => {
+                    if (editingOptionId !== `mcq-${option.id}`) {
+                      setSelectedMcqOptionId(option.id);
+                    }
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '14px 16px',
+                    background: selectedMcqOptionId === option.id ? 'rgba(74, 85, 104, 0.08)' : 'transparent',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    border: selectedMcqOptionId === option.id ? '2px solid rgba(74, 85, 104, 0.4)' : '2px solid transparent'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (selectedMcqOptionId !== option.id) {
+                      e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.08)';
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (selectedMcqOptionId !== option.id) {
+                      e.currentTarget.style.boxShadow = 'none';
+                      e.currentTarget.style.background = 'transparent';
+                    }
+                  }}
+                >
+                  {/* 번호 뱃지 */}
+                  <span style={{ 
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '24px',
+                    height: '24px',
+                    background: selectedMcqOptionId === option.id ? 'rgba(74, 85, 104, 0.2)' : 'rgba(74, 85, 104, 0.1)',
+                    borderRadius: '50%',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    color: '#4A5568',
+                    flexShrink: 0
+                  }}>
+                    {option.id}
+                  </span>
+                  {/* 텍스트 영역 */}
+                  <div style={{ flex: 1 }}>
+                    {editingOptionId === `mcq-${option.id}` ? (
+                      <input
+                        type="text"
+                        value={option.text}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          const newText = e.target.value;
+                          setOptions(prev => prev.map(o => 
+                            o.id === option.id ? { ...o, text: newText } : o
+                          ));
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            setEditingOptionId(null);
+                          }
+                        }}
+                        onBlur={() => setEditingOptionId(null)}
+                        autoFocus
+                        style={{
+                          width: '100%',
+                          fontSize: '15px',
+                          color: '#1D1D1F',
+                          padding: '8px 12px',
+                          border: '1px solid rgba(107, 114, 128, 0.3)',
+                          borderRadius: '8px',
+                          outline: 'none',
+                          background: 'white'
+                        }}
+                      />
+                    ) : (
+                      <span style={{
+                        fontSize: '15px',
+                        color: '#1D1D1F'
+                      }}>
+                        {option.text}
+                      </span>
+                    )}
+                  </div>
+                  {/* 연필 아이콘 */}
+                  {editingOptionId !== `mcq-${option.id}` && (
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingOptionId(`mcq-${option.id}`);
+                      }}
+                      style={{
+                        padding: '8px',
+                        cursor: 'pointer',
+                        opacity: 0.5,
+                        transition: 'opacity 0.2s ease',
+                        flexShrink: 0
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                      onMouseLeave={(e) => e.currentTarget.style.opacity = 0.5}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            {/* 선택 완료 버튼 */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              marginTop: '20px'
+            }}>
+              <button
+                onClick={() => {
+                  if (selectedMcqOptionId !== null) {
+                    const selectedOption = options.find(o => o.id === selectedMcqOptionId);
+                    if (selectedOption) {
+                      onSelect(selectedOption);
+                      setSelectedMcqOptionId(null);
+                    }
+                  }
+                }}
+                disabled={selectedMcqOptionId === null}
+                style={{
+                  padding: '12px 32px',
+                  background: selectedMcqOptionId !== null ? 'rgba(74, 85, 104, 0.9)' : 'rgba(107, 114, 128, 0.3)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  fontSize: '15px',
+                  fontWeight: '500',
+                  color: 'white',
+                  cursor: selectedMcqOptionId !== null ? 'pointer' : 'not-allowed',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (selectedMcqOptionId !== null) {
+                    e.currentTarget.style.background = 'rgba(74, 85, 104, 1)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (selectedMcqOptionId !== null) {
+                    e.currentTarget.style.background = 'rgba(74, 85, 104, 0.9)';
+                  }
+                }}
+              >
+                선택 완료
+              </button>
+            </div>
+
+            {/* 진행 표시 */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '8px',
+              marginTop: '24px'
+            }}>
+              {[1, 2, 3].map((s) => (
+                <div
+                  key={s}
+                  style={{
+                    width: s === step ? '24px' : '8px',
+                    height: '8px',
+                    borderRadius: '4px',
+                    background: s <= step ? '#4A5568' : 'rgba(74, 85, 104, 0.2)',
+                    transition: 'all 0.3s ease'
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+    </>
   );
+};
 
 // 🔥 NEW: 수정 내용 팝업 컴포넌트
 const EditInfoPopup = ({ paragraphId, editInstructions, onClose }) => {
@@ -2381,9 +4094,61 @@ const HintIcon = ({ onClick, isActive }) => (
       <circle cx="12" cy="12" r="9" stroke="rgba(74, 85, 104, 0.8)" strokeWidth="2"/>
       <path d="M12 17v-1m0-4v-4" stroke="rgba(74, 85, 104, 0.8)" strokeWidth="2" strokeLinecap="round"/>
       <circle cx="12" cy="18" r="0.5" fill="rgba(74, 85, 104, 0.8)"/>
+      </svg>
+  </div>
+);
+
+// 객관식 헬프 아이콘 컴포넌트 (손 모양) - 회색 SVG 스타일
+const McqHelpIcon = ({ onClick, disabled }) => (
+  <div
+    className="mcq-help-icon"
+    onClick={disabled ? undefined : onClick}
+    title={disabled ? "이 단계에서는 사용할 수 없어요" : "이 질문에 대한 답을 하기가 어려우면, 객관식으로 진행할 수 있어요"}
+    style={{
+      width: '24px',
+      height: '24px',
+      cursor: disabled ? 'not-allowed' : 'pointer',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: disabled
+        ? 'rgba(200, 200, 200, 0.2)'
+        : 'rgba(107, 114, 128, 0.08)',
+      backdropFilter: 'blur(10px)',
+      WebkitBackdropFilter: 'blur(10px)',
+      border: '1px solid rgba(107, 114, 128, 0.2)',
+      borderRadius: '50%',
+      transition: 'all 0.2s ease',
+      opacity: disabled ? 0.5 : 1,
+      marginLeft: '8px'
+    }}
+    onMouseEnter={(e) => {
+      if (!disabled) {
+        e.currentTarget.style.background = 'rgba(107, 114, 128, 0.15)';
+        e.currentTarget.style.transform = 'scale(1.1)';
+      }
+    }}
+    onMouseLeave={(e) => {
+      if (!disabled) {
+        e.currentTarget.style.background = 'rgba(107, 114, 128, 0.08)';
+        e.currentTarget.style.transform = 'scale(1)';
+      }
+    }}
+  >
+    {/* 손 모양 아이콘 - 회색 스타일 */}
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+      <path 
+        d="M18 8.5V8a2 2 0 0 0-4 0v.5M14 8.5V6a2 2 0 0 0-4 0v2.5M10 8.5V7a2 2 0 0 0-4 0v5.5M6 12.5V18a4 4 0 0 0 4 4h4a4 4 0 0 0 4-4v-5.5a2 2 0 0 0-4 0M10 8.5V12M14 8.5V12" 
+        stroke={disabled ? "rgba(156, 163, 175, 0.6)" : "rgba(75, 85, 99, 0.8)"} 
+        strokeWidth="1.5" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+      />
     </svg>
   </div>
 );
+
+// 힌트 표시 상태 관리
 
 // 힌트 표시 상태 관리
 const [showHintInBubble, setShowHintInBubble] = useState(false);
@@ -2883,6 +4648,11 @@ useEffect(() => {
 
 // Initialize localStorage on app start
 useEffect(() => {
+  // 문답 플로우 진입 중이면 초기화 스킵
+  const savedFlow = localStorage.getItem('deepgl_selected_experience');
+  const urlParams = new URLSearchParams(location.search);  const flow = urlParams.get('flow');
+  if (savedFlow || flow === 'experience-extraction') return;
+  
   localStorage.removeItem('resumeId');
   localStorage.removeItem('trends');
   dispatch({ type: 'SET_ANALYSIS', resumeId: '', analysisId: '' });
@@ -2903,158 +4673,7 @@ useEffect(() => {
   }
 }, [screen, state.resumeId, state.analysisId, state.selectedExperiences.length]);
 
-/**
- * v25.3: STAR 입력 패널 (2x2 그리드)
- */
-const STARInputPanel = ({ inputFields, starInputs, setStarInputs, disabled, onModeSwitch, displayTexts }) => {
-  if (!inputFields || inputFields.length === 0) return null;
-  
-  const orderedKeys = ['situation', 'task', 'action', 'result'];
-  const orderedFields = orderedKeys
-    .map(key => inputFields.find(f => f.key === key))
-    .filter(Boolean);
-  
-  const topRow = orderedFields.slice(0, 2);
-  const bottomRow = orderedFields.slice(2, 4);
-  
-  const renderField = (field) => (
-    <div 
-      key={field.key}
-      style={{
-        flex: 1,
-        minWidth: '320px',
-        maxWidth: '400px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px'
-      }}
-    >
-    {/* 안내 텍스트 - 타이프라이터 효과 적용 */}
-    <div style={{
-        fontSize: '15px',
-        color: '#86868B',
-        lineHeight: '1.5',
-        textAlign: 'center',
-        minHeight: '50px'
-      }}>
-        <div 
-          className="star-text-line1"
-          style={{ 
-            color: '#1D1D1F',
-            fontWeight: '500',
-            marginBottom: '4px'
-          }}
-        >
-          {displayTexts?.[field.key]?.line1 || ''}
-        </div>
-        <div 
-          className="star-text-line2"
-          style={{ 
-            fontSize: '13px', 
-            color: '#86868B'
-          }}
-        >
-          {displayTexts?.[field.key]?.line2 || ''}
-        </div>
-      </div>
-      
-      {/* 입력 필드 */}
-      <textarea
-        value={starInputs[field.key] || ''}
-        onChange={(e) => setStarInputs(prev => ({
-          ...prev,
-          [field.key]: e.target.value
-        }))}
-        disabled={disabled}
-        style={{
-          width: '100%',
-          minHeight: '50px',
-          maxHeight: '120px',
-          padding: '14px 20px',
-          fontSize: '17px',
-          border: '1px solid rgba(74, 85, 104, 0.3)',
-          borderRadius: '24px',
-          resize: 'none',
-          background: 'rgba(255, 255, 255, 0.8)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-          outline: 'none',
-          transition: 'all 0.2s ease',
-          fontFamily: 'inherit',
-          lineHeight: '1.5',
-          overflow: 'hidden',
-          overflowY: 'auto',
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none'
-        }}
-        className="star-textarea-no-scrollbar"
-        onFocus={(e) => {
-          e.target.style.borderColor = 'rgba(74, 85, 104, 0.5)';
-          e.target.style.boxShadow = '0 0 0 3px rgba(74, 85, 104, 0.1)';
-        }}
-        onBlur={(e) => {
-          e.target.style.borderColor = 'rgba(74, 85, 104, 0.3)';
-          e.target.style.boxShadow = 'none';
-        }}
-      />
-    </div>
-  );
-  
-  return (
-    <div 
-      className="star-input-panel"
-      style={{
-        width: '100%',
-        maxWidth: '900px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '24px',
-        alignItems: 'center'
-      }}
-    >
-      {/* 상단 행 */}
-      <div style={{
-        display: 'flex',
-        gap: '24px',
-        width: '100%',
-        justifyContent: 'center',
-        flexWrap: 'wrap'
-      }}>
-        {topRow.map(renderField)}
-      </div>
-      
-      {/* 하단 행 */}
-      <div style={{
-        display: 'flex',
-        gap: '24px',
-        width: '100%',
-        justifyContent: 'center',
-        flexWrap: 'wrap'
-      }}>
-        {bottomRow.map(renderField)}
-      </div>
-      
-      {/* 모드 전환 */}
-      <button
-        onClick={onModeSwitch}
-        style={{
-          marginTop: '4px',
-          padding: '10px 16px',
-          fontSize: '15px',
-          color: '#86868B',
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          transition: 'color 0.2s ease'
-        }}
-        onMouseEnter={(e) => e.target.style.color = '#1D1D1F'}
-        onMouseLeave={(e) => e.target.style.color = '#86868B'}
-      >
-        일반 텍스트로 입력하기
-      </button>
-    </div>
-  );
-};
+
 
 /**
  * 🔥 NEW: 문단별 수정 내용 팝업 (이름 변경해서 중복 방지)
@@ -3091,60 +4710,124 @@ const ParagraphEditInfoPopup = ({ paragraphId, editInstructions, onClose }) => {
   );
 };
 
+const { isAuthenticated, loading: authLoading, email } = useAuth();
+if (authLoading) {
+  return (
+    <div className="app-container">
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+        <div className="loading-indicator"><div className="progress-ring" /></div>
+      </div>
+    </div>
+  );
+}
+if (screen === 'start' || screen === 'loading' || screen === 'direction-selection') {
+  return (
+    <Routes>
+      <Route path="/signup" element={isAuthenticated ? <Navigate to="/intro" replace /> : <SignupPage />} />
+      <Route path="/login" element={isAuthenticated ? <Navigate to="/intro" replace /> : <LoginPage onLoginSuccess={() => {}} />} />
+      <Route path="/intro" element={!isAuthenticated ? <Navigate to="/login" replace /> : <IntroPage />} />
+      <Route path="/dashboard" element={!isAuthenticated ? <Navigate to="/login" replace /> : <DashboardPage />} />
+      <Route path="/search" element={!isAuthenticated ? <Navigate to="/login" replace /> : <SearchPage />} />    
+        <Route path="/mypage" element={!isAuthenticated ? <Navigate to="/login" replace /> : <MyPage />} />
+      <Route path="/project/:projectId" element={!isAuthenticated ? <Navigate to="/login" replace /> : <ProjectDetailPage />} />
+      <Route path="/database" element={!isAuthenticated ? <Navigate to="/login" replace /> : <DatabasePage />} />
+      <Route path="/database/:companyName" element={!isAuthenticated ? <Navigate to="/login" replace /> : <CompanyFolderPage />} />
+      <Route path="/database/:companyName/episodes" element={!isAuthenticated ? <Navigate to="/login" replace /> : <EpisodeListPage />} />    
+      <Route path="/database/:companyName/cover-letters" element={!isAuthenticated ? <Navigate to="/login" replace /> : <CoverLetterListPage />} />
+      <Route path="/database/:companyName/episodes/:episodeId" element={!isAuthenticated ? <Navigate to="/login" replace /> : <EpisodeDetailPage />} />
+      <Route path="/database/:companyName/cover-letters/:coverLetterId" element={!isAuthenticated ? <Navigate to="/login" replace /> : <CoverLetterDetailPage />} />        
+       <Route path="/project/:projectId/question/:questionId" element={!isAuthenticated ? <Navigate to="/login" replace /> : <DeepglFlowWrapper />} />      
+         <Route path="*" element={<Navigate to={isAuthenticated ? "/intro" : "/login"} replace />} />
+    </Routes>
+  );
+}
+
+
+
+
+
+
 return (
   <div className="app-container">
-    <div className="content-wrapper">
-      {/* Progress Indicator */}
-      {screen !== 'start' && (
-        <div className="progress-indicator">
-          {PROCESS_STEPS.map((step, index) => (
-            <div
-              key={index}
-              className={`progress-step ${index === currentProcessStep ? 'active' : ''} ${
-                index < currentProcessStep ? 'completed' : ''
-              }`}
-            >
-              <span className="step-number">{index + 1}</span>
-              <span className="step-label">{step}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Error Modal */}
-      {error && (
-        <>
-          <div className="modal-overlay" onClick={() => setError(null)} />
-          <div className="modal error-modal">
-            <p>{error}</p>
-            <div className="modal-actions">
-              <button className="button-secondary" onClick={() => setError(null)}>
-                닫기
-              </button>
-              {error.includes('분석 실패') && (
-                <button className="button-primary" onClick={(e) => handleAnalysisSubmit(e)}>
-                  재시도
-                </button>
-              )}
-              {error.includes('사전 분석 실패') && (
-                <button className="button-primary" onClick={(e) => handlePreAnalysisSubmit(e)}>
-                  재시도
-                </button>
-              )}
-              {error.includes('계획서 생성 실패') && (
-                <button className="button-primary" onClick={handlePlanRequest}>
-                  재시도
-                </button>
-              )}
-              {error.includes('첨삭 실패') && (
-                <button className="button-primary" onClick={handleFinalizeCoverLetter}>
-                  재시도
-                </button>
-              )}
-            </div>
+    <div className="project-detail-layout">
+      {/* 사이드바 - 항상 표시 */}
+      <aside className="dashboard-sidebar">
+        <div className="sidebar-profile" onClick={() => navigate('/mypage')}>
+          <div className="profile-avatar">
+            {email ? email[0].toUpperCase() : 'U'}
           </div>
-        </>
-      )}
+        </div>
+        <div className="sidebar-spacer" />
+        <button className="sidebar-logout" onClick={() => { setScreen('start'); navigate('/search'); }} title="검색" style={{ marginBottom: '12px' }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+        </button>
+        <button className="sidebar-logout" onClick={() => { setScreen('start'); navigate('/database'); }} title="데이터베이스" style={{ marginBottom: '12px' }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <ellipse cx="12" cy="5" rx="9" ry="3" />
+            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+          </svg>
+        </button>
+        <button className="sidebar-logout" onClick={() => { setScreen('start'); navigate('/dashboard'); }} title="대시보드" style={{ marginBottom: '12px' }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
+        </button>
+        <button className="sidebar-logout" onClick={() => { localStorage.clear(); window.location.href = '/login'; }} title="로그아웃">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+        </button>
+      </aside>
+      <main className="project-detail-main">
+        <div className="content-wrapper">
+
+          
+          {/* Error Modal */}
+          {error && (
+            <>
+              <div className="modal-overlay" onClick={() => setError(null)} />
+              <div className="modal error-modal">
+                <p>{error}</p>
+                <div className="modal-actions">
+                  <button className="button-secondary" onClick={() => setError(null)}>
+                    닫기
+                  </button>
+                  {error.includes('분석 실패') && (
+                    <button className="button-primary" onClick={(e) => handleAnalysisSubmit(e)}>
+                      재시도
+                    </button>
+                  )}
+                  {error.includes('사전 분석 실패') && (
+                    <button className="button-primary" onClick={(e) => handlePreAnalysisSubmit(e)}>
+                      재시도
+                    </button>
+                  )}
+                  {error.includes('계획서 생성 실패') && (
+                    <button className="button-primary" onClick={handlePlanRequest}>
+                      재시도
+                    </button>
+                  )}
+                  {error.includes('첨삭 실패') && (
+                    <button className="button-primary" onClick={handleFinalizeCoverLetter}>
+                      재시도
+                    </button>
+                  )}
+                </div>
+              </div>
+            </>
+          )} 
+
+
+
+
+
 
       {screen === 'start' && (
         <div
@@ -3849,10 +5532,650 @@ return (
 
           {state.loading && <LoadingModal message={currentMessage} />}
         </div>
-      )}
+     )}
+      
+     {/* 상황 선택 화면 (메인질문 🖐️ 클릭 시) */}
+     {showSituationSelection && (
+       <div
+         style={{
+           width: '100%',
+           height: 'calc(100vh - 120px)',
+           display: 'flex',
+           flexDirection: 'column',
+           alignItems: 'center',
+           justifyContent: 'center',
+           padding: '40px 24px',
+           background: 'transparent'
+         }}
+       >
+         <div
+           style={{
+             width: '100%',
+             maxWidth: '600px',
+             display: 'flex',
+             flexDirection: 'column',
+             gap: '24px'
+           }}
+         >
+           {/* 헤더 */}
+           <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+             <h2 style={{
+               fontSize: '24px',
+               fontWeight: '700',
+               color: '#1D1D1F',
+               marginBottom: '12px'
+             }}>
+               비슷한 경험을 선택해주세요
+             </h2>
+             <p style={{
+               fontSize: '15px',
+               color: '#86868B',
+               lineHeight: '1.5'
+             }}>
+               {situationCoreLogic || '아래 중 가장 비슷한 상황을 선택하면, 그에 맞는 질문으로 다시 시작합니다.'}
+             </p>
+           </div>
 
-      {/* Experience Extraction (Chat) - Focus Mode 수정 */}
-      {screen === 'experience-extraction' && (
+           {/* 로딩 상태 */}
+           {situationLoading ? (
+             <div style={{
+               display: 'flex',
+               flexDirection: 'column',
+               alignItems: 'center',
+               justifyContent: 'center',
+               padding: '60px 0',
+               gap: '16px'
+             }}>
+               <div className="loading-spinner" />
+               <p style={{ color: '#86868B', fontSize: '15px' }}>상황을 분석하고 있습니다...</p>
+             </div>
+           ) : (
+             <>
+    {/* 상황 선택지 */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                 {situationOptions.map((situation) => (
+                   <div
+                     key={situation.id}
+                     onClick={() => {
+                       if (editingOptionId !== `situation-${situation.id}`) {
+                         setSelectedSituationId(situation.id);
+                       }
+                     }}
+                     style={{
+                       display: 'flex',
+                       alignItems: 'center',
+                       gap: '12px',
+                       padding: '16px 20px',
+                       background: selectedSituationId === situation.id ? 'rgba(74, 85, 104, 0.08)' : 'transparent',
+                       borderRadius: '12px',
+                       cursor: 'pointer',
+                       transition: 'all 0.2s ease',
+                       border: selectedSituationId === situation.id ? '2px solid rgba(74, 85, 104, 0.4)' : '2px solid transparent'
+                     }}
+                     onMouseEnter={(e) => {
+                       if (selectedSituationId !== situation.id) {
+                         e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.08)';
+                         e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)';
+                       }
+                     }}
+                     onMouseLeave={(e) => {
+                       if (selectedSituationId !== situation.id) {
+                         e.currentTarget.style.boxShadow = 'none';
+                         e.currentTarget.style.background = 'transparent';
+                       }
+                     }}
+                   >
+                     {/* 텍스트 영역 */}
+                     <div style={{ flex: 1 }}>
+                       {editingOptionId === `situation-${situation.id}` ? (
+                         <input
+                           type="text"
+                           value={situation.text}
+                           onClick={(e) => e.stopPropagation()}
+                           onChange={(e) => {
+                             const newText = e.target.value;
+                             setSituationOptions(prev => prev.map(s => 
+                               s.id === situation.id ? { ...s, text: newText } : s
+                             ));
+                           }}
+                           onKeyDown={(e) => {
+                             if (e.key === 'Enter') {
+                               setEditingOptionId(null);
+                             }
+                           }}
+                           onBlur={() => setEditingOptionId(null)}
+                           autoFocus
+                           style={{
+                             width: '100%',
+                             fontSize: '16px',
+                             fontWeight: '500',
+                             color: '#1D1D1F',
+                             lineHeight: '1.5',
+                             padding: '8px 12px',
+                             border: '1px solid rgba(107, 114, 128, 0.3)',
+                             borderRadius: '8px',
+                             outline: 'none',
+                             background: 'white'
+                           }}
+                         />
+                       ) : (
+                         <>
+                           <p style={{
+                             fontSize: '16px',
+                             fontWeight: '500',
+                             color: '#1D1D1F',
+                             marginBottom: situation.context ? '6px' : '0',
+                             lineHeight: '1.5'
+                           }}>
+                             {situation.text}
+                           </p>
+                           {situation.context && (
+                             <p style={{
+                               fontSize: '13px',
+                               color: '#86868B'
+                             }}>
+                               {situation.context}
+                             </p>
+                           )}
+                         </>
+                       )}
+                     </div>
+                     {/* 연필 아이콘 */}
+                     {editingOptionId !== `situation-${situation.id}` && (
+                       <div
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           setEditingOptionId(`situation-${situation.id}`);
+                         }}
+                         style={{
+                           padding: '8px',
+                           cursor: 'pointer',
+                           opacity: 0.5,
+                           transition: 'opacity 0.2s ease'
+                         }}
+                         onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                         onMouseLeave={(e) => e.currentTarget.style.opacity = 0.5}
+                       >
+                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                         </svg>
+                       </div>
+                     )}
+                   </div>
+                 ))}
+               </div>
+
+               {/* 하단 버튼 영역 */}
+               <div style={{
+                 display: 'flex',
+                 justifyContent: 'center',
+                 gap: '16px',
+                 marginTop: '16px'
+               }}>
+                 {/* 새로고침 버튼 */}
+                 <button
+                   onClick={handleSituationRefresh}
+                   style={{
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: '8px',
+                     padding: '12px 24px',
+                     background: 'transparent',
+                     border: '1px solid rgba(107, 114, 128, 0.3)',
+                     borderRadius: '12px',
+                     fontSize: '15px',
+                     fontWeight: '500',
+                     color: '#4B5563',
+                     cursor: 'pointer',
+                     transition: 'all 0.2s ease'
+                   }}
+                   onMouseEnter={(e) => {
+                     e.currentTarget.style.background = 'rgba(107, 114, 128, 0.08)';
+                   }}
+                   onMouseLeave={(e) => {
+                     e.currentTarget.style.background = 'transparent';
+                   }}
+                 >
+                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                     <path d="M23 4v6h-6M1 20v-6h6" />
+                     <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                   </svg>
+                   다른 상황 보기
+                 </button>
+
+                 {/* 취소 버튼 */}
+                 <button
+                   onClick={handleSituationCancel}
+                   style={{
+                     padding: '12px 24px',
+                     background: 'transparent',
+                     border: '1px solid rgba(107, 114, 128, 0.3)',
+                     borderRadius: '12px',
+                     fontSize: '15px',
+                     fontWeight: '500',
+                     color: '#4B5563',
+                     cursor: 'pointer',
+                     transition: 'all 0.2s ease'
+                   }}
+                   onMouseEnter={(e) => {
+                     e.currentTarget.style.background = 'rgba(107, 114, 128, 0.08)';
+                   }}
+                   onMouseLeave={(e) => {
+                     e.currentTarget.style.background = 'transparent';
+                   }}
+                 >
+                   돌아가기
+                 </button>
+
+                 {/* 선택 완료 버튼 */}
+                 <button
+                   onClick={() => {
+                     if (selectedSituationId !== null) {
+                       const selectedSituation = situationOptions.find(s => s.id === selectedSituationId);
+                       if (selectedSituation) {
+                         handleSituationSelect(selectedSituation);
+                         setSelectedSituationId(null);
+                       }
+                     }
+                   }}
+                   disabled={selectedSituationId === null}
+                   style={{
+                     padding: '12px 24px',
+                     background: selectedSituationId !== null ? 'rgba(74, 85, 104, 0.9)' : 'rgba(107, 114, 128, 0.3)',
+                     border: 'none',
+                     borderRadius: '12px',
+                     fontSize: '15px',
+                     fontWeight: '500',
+                     color: 'white',
+                     cursor: selectedSituationId !== null ? 'pointer' : 'not-allowed',
+                     transition: 'all 0.2s ease'
+                   }}
+                   onMouseEnter={(e) => {
+                     if (selectedSituationId !== null) {
+                       e.currentTarget.style.background = 'rgba(74, 85, 104, 1)';
+                     }
+                   }}
+                   onMouseLeave={(e) => {
+                     if (selectedSituationId !== null) {
+                       e.currentTarget.style.background = 'rgba(74, 85, 104, 0.9)';
+                     }
+                   }}
+                 >
+                   선택 완료
+                 </button>
+               </div>
+             </>
+           )}
+         </div>
+       </div>
+     )}
+
+     {/* STAR 객관식 화면 (STAR 🖐️ 클릭 시) */}
+     {showStarMcq && (
+       <div
+         style={{
+           width: '100%',
+           height: 'calc(100vh - 120px)',
+           display: 'flex',
+           flexDirection: 'column',
+           alignItems: 'center',
+           justifyContent: 'center',
+           padding: '40px 24px',
+           background: 'transparent'
+         }}
+       >
+         <div
+           style={{
+             width: '100%',
+             maxWidth: '600px',
+             display: 'flex',
+             flexDirection: 'column',
+             gap: '24px'
+           }}
+         >
+           {/* 진행 상황 표시 */}
+           <div style={{
+             display: 'flex',
+             justifyContent: 'center',
+             gap: '8px',
+             marginBottom: '8px'
+           }}>
+     {['S', 'T', 'A', 'R'].map((type) => {
+               const fieldKeyMap = { 'S': 'situation', 'T': 'task', 'A': 'action', 'R': 'result' };
+               const hasValue = starInputs[fieldKeyMap[type]]?.trim();
+               return (
+                 <div
+                   key={type}
+                   style={{
+                     width: '40px',
+                     height: '40px',
+                     borderRadius: '50%',
+                     display: 'flex',
+                     alignItems: 'center',
+                     justifyContent: 'center',
+                     fontSize: '16px',
+                     fontWeight: '600',
+                     background: hasValue 
+                       ? 'rgba(16, 185, 129, 0.2)' 
+                       : starMcqType === type 
+                         ? 'rgba(107, 114, 128, 0.2)' 
+                         : 'rgba(107, 114, 128, 0.08)',
+                     color: hasValue
+                       ? '#10B981'
+                       : starMcqType === type
+                         ? '#1D1D1F'
+                         : '#86868B',
+                     border: starMcqType === type 
+                       ? '2px solid rgba(107, 114, 128, 0.4)' 
+                       : '1px solid rgba(107, 114, 128, 0.2)',
+                     transition: 'all 0.2s ease'
+                   }}
+                 >
+                   {hasValue ? '✓' : type}
+                 </div>
+               );
+             })}
+           </div>
+
+{/* 헤더 - v3.0 심화 단계 표시 */}
+<div style={{ textAlign: 'center' }}>
+    {/* 심화 단계 뱃지 */}
+    {!starMcqLoading && currentDepth > 0 && (
+      <div style={{
+        display: 'inline-block',
+        padding: '4px 12px',
+        background: 'rgba(59, 130, 246, 0.1)',
+        borderRadius: '12px',
+        fontSize: '12px',
+        fontWeight: '600',
+        color: '#3B82F6',
+        marginBottom: '8px'
+      }}>
+        {currentDepth}단계 심화 중
+      </div>
+    )}
+    <h2 style={{
+      fontSize: '18px',
+      fontWeight: '600',
+      color: '#1D1D1F',
+      marginBottom: '12px',
+      lineHeight: '1.6'
+    }}>
+      {starMcqLoading 
+        ? `[${starMcqType}] 질문을 준비하고 있습니다...`
+        : `[${starMcqType}] ${starMcqQuestion || '질문을 불러오는 중...'}`
+      }
+    </h2>
+    {/* 누적 요약 표시 (선택) */}
+    {!starMcqLoading && contextSummary && (
+      <p style={{
+        fontSize: '13px',
+        color: '#6B7280',
+        marginBottom: '16px',
+        fontStyle: 'italic'
+      }}>
+        {contextSummary}
+      </p>
+    )}
+  </div>
+
+           {/* 로딩 상태 */}
+           {(starMcqLoading || starMcqOptions.length === 0) ? (      
+                   <div style={{
+               display: 'flex',
+               flexDirection: 'column',
+               alignItems: 'center',
+               justifyContent: 'center',
+               padding: '60px 0',
+               gap: '16px'
+             }}>
+               <div className="loading-spinner" />
+               <p style={{ color: '#86868B', fontSize: '15px' }}>선택지를 생성하고 있습니다...</p>
+             </div>
+           ) : (
+             <>
+ {/* 선택지 */}
+ <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                 {starMcqOptions.map((option) => (
+                   <div
+                     key={option.id}
+                     onClick={() => {
+                       if (editingOptionId !== `star-${option.id}`) {
+                         setSelectedStarOptionId(option.id);
+                       }
+                     }}
+                     style={{
+                       display: 'flex',
+                       alignItems: 'center',
+                       gap: '12px',
+                       padding: '16px 20px',
+                       background: selectedStarOptionId === option.id ? 'rgba(74, 85, 104, 0.08)' : 'transparent',
+                       borderRadius: '12px',
+                       cursor: 'pointer',
+                       transition: 'all 0.2s ease',
+                       border: selectedStarOptionId === option.id ? '2px solid rgba(74, 85, 104, 0.4)' : '2px solid transparent'
+                     }}
+                     onMouseEnter={(e) => {
+                       if (selectedStarOptionId !== option.id) {
+                         e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.08)';
+                         e.currentTarget.style.background = 'rgba(255, 255, 255, 0.6)';
+                       }
+                     }}
+                     onMouseLeave={(e) => {
+                       if (selectedStarOptionId !== option.id) {
+                         e.currentTarget.style.boxShadow = 'none';
+                         e.currentTarget.style.background = 'transparent';
+                       }
+                     }}
+                   >
+                     {/* 텍스트 영역 */}
+                     <div style={{ flex: 1 }}>
+                       {editingOptionId === `star-${option.id}` ? (
+                         <input
+                           type="text"
+                           value={option.text}
+                           onClick={(e) => e.stopPropagation()}
+                           onChange={(e) => {
+                             const newText = e.target.value;
+                             setStarMcqOptions(prev => prev.map(o => 
+                               o.id === option.id ? { ...o, text: newText } : o
+                             ));
+                           }}
+                           onKeyDown={(e) => {
+                             if (e.key === 'Enter') {
+                               setEditingOptionId(null);
+                             }
+                           }}
+                           onBlur={() => setEditingOptionId(null)}
+                           autoFocus
+                           style={{
+                             width: '100%',
+                             fontSize: '16px',
+                             fontWeight: '500',
+                             color: '#1D1D1F',
+                             lineHeight: '1.5',
+                             padding: '8px 12px',
+                             border: '1px solid rgba(107, 114, 128, 0.3)',
+                             borderRadius: '8px',
+                             outline: 'none',
+                             background: 'white'
+                           }}
+                         />
+                       ) : (
+                         <p style={{
+                           fontSize: '16px',
+                           fontWeight: '500',
+                           color: '#1D1D1F',
+                           lineHeight: '1.5',
+                           margin: 0
+                         }}>
+                           {option.text}
+                         </p>
+                       )}
+                     </div>
+                     {/* 연필 아이콘 */}
+                     {editingOptionId !== `star-${option.id}` && (
+                       <div
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           setEditingOptionId(`star-${option.id}`);
+                         }}
+                         style={{
+                           padding: '8px',
+                           cursor: 'pointer',
+                           opacity: 0.5,
+                           transition: 'opacity 0.2s ease'
+                         }}
+                         onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                         onMouseLeave={(e) => e.currentTarget.style.opacity = 0.5}
+                       >
+                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                         </svg>
+                       </div>
+                     )}
+                   </div>
+                 ))}
+               </div>
+{/* 하단 버튼 영역 - v3.0 심화형 */}
+<div style={{
+                 display: 'flex',
+                 justifyContent: 'center',
+                 gap: '12px',
+                 marginTop: '20px',
+                 flexWrap: 'wrap'
+               }}>
+                 {/* 다른 선택지 보기 버튼 */}
+                 <button
+                   onClick={handleStarMcqRefresh}
+                   style={{
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: '8px',
+                     padding: '12px 20px',
+                     background: 'transparent',
+                     border: '1px solid rgba(107, 114, 128, 0.3)',
+                     borderRadius: '12px',
+                     fontSize: '14px',
+                     fontWeight: '500',
+                     color: '#6B7280',
+                     cursor: 'pointer',
+                     transition: 'all 0.2s ease'
+                   }}
+                   onMouseEnter={(e) => {
+                     e.currentTarget.style.background = 'rgba(107, 114, 128, 0.08)';
+                   }}
+                   onMouseLeave={(e) => {
+                     e.currentTarget.style.background = 'transparent';
+                   }}
+                 >
+                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                     <path d="M23 4v6h-6M1 20v-6h6" />
+                     <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                   </svg>
+                   다른 선택지
+                 </button>
+
+                 {/* 돌아가기 버튼 */}
+                 <button
+                   onClick={handleStarMcqCancel}
+                   style={{
+                     padding: '12px 20px',
+                     background: 'transparent',
+                     border: '1px solid rgba(107, 114, 128, 0.3)',
+                     borderRadius: '12px',
+                     fontSize: '14px',
+                     fontWeight: '500',
+                     color: '#6B7280',
+                     cursor: 'pointer',
+                     transition: 'all 0.2s ease'
+                   }}
+                   onMouseEnter={(e) => {
+                     e.currentTarget.style.background = 'rgba(107, 114, 128, 0.08)';
+                   }}
+                   onMouseLeave={(e) => {
+                     e.currentTarget.style.background = 'transparent';
+                   }}
+                 >
+                   돌아가기
+                 </button>
+
+                 {/* 더 자세히 버튼 (심화 계속) */}
+                 <button
+                   onClick={() => {
+                     if (selectedStarOptionId !== null) {
+                       const selectedOption = starMcqOptions.find(o => o.id === selectedStarOptionId);
+                       if (selectedOption) {
+                         handleStarMcqSelect(selectedOption);
+                         setSelectedStarOptionId(null);
+                       }
+                     }
+                   }}
+                   disabled={selectedStarOptionId === null}
+                   style={{
+                     padding: '12px 24px',
+                     background: selectedStarOptionId !== null ? 'rgba(59, 130, 246, 0.9)' : 'rgba(107, 114, 128, 0.3)',
+                     border: 'none',
+                     borderRadius: '12px',
+                     fontSize: '14px',
+                     fontWeight: '600',
+                     color: 'white',
+                     cursor: selectedStarOptionId !== null ? 'pointer' : 'not-allowed',
+                     transition: 'all 0.2s ease'
+                   }}
+                   onMouseEnter={(e) => {
+                     if (selectedStarOptionId !== null) {
+                       e.currentTarget.style.background = 'rgba(59, 130, 246, 1)';
+                     }
+                   }}
+                   onMouseLeave={(e) => {
+                     if (selectedStarOptionId !== null) {
+                       e.currentTarget.style.background = 'rgba(59, 130, 246, 0.9)';
+                     }
+                   }}
+                 >
+                   더 자세히
+                 </button>
+
+                 {/* 다음 질문으로 넘어가기 버튼 */}
+                 <button
+                   onClick={handleStarMcqNextStar}
+                   disabled={depthSelections.length === 0}
+                   style={{
+                     padding: '12px 24px',
+                     background: depthSelections.length > 0 ? 'rgba(74, 85, 104, 0.9)' : 'rgba(107, 114, 128, 0.3)',
+                     border: 'none',
+                     borderRadius: '12px',
+                     fontSize: '14px',
+                     fontWeight: '600',
+                     color: 'white',
+                     cursor: depthSelections.length > 0 ? 'pointer' : 'not-allowed',
+                     transition: 'all 0.2s ease'
+                   }}
+                   onMouseEnter={(e) => {
+                     if (depthSelections.length > 0) {
+                       e.currentTarget.style.background = 'rgba(74, 85, 104, 1)';
+                     }
+                   }}
+                   onMouseLeave={(e) => {
+                     if (depthSelections.length > 0) {
+                       e.currentTarget.style.background = 'rgba(74, 85, 104, 0.9)';
+                     }
+                   }}
+                 >
+                   다음 질문으로 →
+                 </button>
+               </div>
+             </>
+           )}
+         </div>
+       </div>
+     )}
+
+     {/* Experience Extraction (Chat) - Focus Mode 수정 */}
+     {screen === 'experience-extraction' && !showSituationSelection && !showStarMcq && (
         <div
           style={{
             width: '100%',
@@ -3978,13 +6301,58 @@ return (
                       position: 'relative'
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexWrap: 'wrap' }}>
+     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexWrap: 'wrap' }}>
                       <span style={{ flex: 1 }}>
                         {showHintInBubble && chatHistory[chatHistory.length - 1].hint
                           ? chatHistory[chatHistory.length - 1].hint
                           : chatHistory[chatHistory.length - 1].message}
                       </span>
+                      
+                      {/* 메인질문 손모양 헬프 아이콘 */}
+                      {chatHistory[chatHistory.length - 1].sender === '딥글' && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMainQuestionHelp();
+                          }}
+                          title="이런 경험이 없다면, 비슷한 상황을 선택해보세요"
+                          style={{
+                            width: '24px',
+                            height: '24px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'rgba(107, 114, 128, 0.08)',
+                            backdropFilter: 'blur(10px)',
+                            WebkitBackdropFilter: 'blur(10px)',
+                            border: '1px solid rgba(107, 114, 128, 0.2)',
+                            borderRadius: '50%',
+                            transition: 'all 0.2s ease',
+                            marginTop: '2px'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.1)';
+                            e.currentTarget.style.background = 'rgba(107, 114, 128, 0.15)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)';
+                            e.currentTarget.style.background = 'rgba(107, 114, 128, 0.08)';
+                          }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                            <path 
+                              d="M18 8.5V8a2 2 0 0 0-4 0v.5M14 8.5V6a2 2 0 0 0-4 0v2.5M10 8.5V7a2 2 0 0 0-4 0v5.5M6 12.5V18a4 4 0 0 0 4 4h4a4 4 0 0 0 4-4v-5.5a2 2 0 0 0-4 0M10 8.5V12M14 8.5V12" 
+                              stroke="rgba(75, 85, 99, 0.8)" 
+                              strokeWidth="1.5" 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </div>
+                      )}
 
+                      {/* 힌트 토글 아이콘 */}
                       {chatHistory[chatHistory.length - 1].sender === '딥글' &&
                         chatHistory[chatHistory.length - 1].hint && (
                           <div
@@ -4000,22 +6368,20 @@ return (
                               alignItems: 'center',
                               justifyContent: 'center',
                               background: showHintInBubble
-                                ? 'linear-gradient(135deg, rgba(74, 85, 104, 0.15), rgba(74, 85, 104, 0.1))'
-                                : 'linear-gradient(135deg, rgba(74, 85, 104, 0.08), rgba(74, 85, 104, 0.05))',
+                                ? 'rgba(74, 85, 104, 0.15)'
+                                : 'rgba(74, 85, 104, 0.08)',
                               backdropFilter: 'blur(10px)',
                               WebkitBackdropFilter: 'blur(10px)',
-                              border: '1px solid rgba(255, 255, 255, 0.2)',
+                              border: '1px solid rgba(107, 114, 128, 0.2)',
                               borderRadius: '50%',
                               transition: 'all 0.2s ease',
                               marginTop: '2px'
                             }}
                             onMouseEnter={(e) => {
                               e.currentTarget.style.transform = 'scale(1.1)';
-                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(74, 85, 104, 0.2)';
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.transform = 'scale(1)';
-                              e.currentTarget.style.boxShadow = 'none';
                             }}
                           >
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -4050,13 +6416,29 @@ return (
                   {/* STAR 모드 */}
                   {inputMode === 'star' && inputFields ? (
                     <>
-                 <STARInputPanel
+       <STARInputPanel
                         inputFields={inputFields}
                         starInputs={starInputs}
                         setStarInputs={setStarInputs}
                         disabled={state.chatLoading}
-                        onModeSwitch={() => setInputMode('text')}
+                        onModeSwitch={handleModeSwitch}
                         displayTexts={starDisplayTexts}
+                        phaseNumber={currentPhaseNumber}
+                        onHelpClick={(fieldKey, stakeholderQuestion) => {
+                          // fieldKey를 STAR 타입으로 변환: situation -> S, task -> T, action -> A, result -> R
+                          const starTypeMap = {
+                            'situation': 'S',
+                            'task': 'T',
+                            'action': 'A',
+                            'result': 'R'
+                          };
+                          const starType = starTypeMap[fieldKey] || 'S';
+                          
+                          // STAR 객관식 상태 초기화 및 시작
+                          setStarMcqSelections([]);
+                          setStarMcqAnswers({});
+                          handleStarMcqStart(starType);
+                        }}
                       />
                       
                      {/* 제출 버튼 + Progress indicator 가로 배치 */}
@@ -4082,8 +6464,8 @@ return (
                             fontWeight: '600',
                             color: 'rgba(74, 85, 104, 0.9)'
                           }}>
-                            질문 {(currentExperienceStep - 1) * 3 + questionCount} / 9
-                          </span>
+질문 {questionCount} / 4                   
+       </span>
                         </div>
 
                         {/* 오른쪽: 제출 버튼 */}
@@ -4232,16 +6614,36 @@ return (
       fontWeight: '600',
       color: 'rgba(74, 85, 104, 0.9)'
     }}>
-      질문 {(currentExperienceStep - 1) * 3 + questionCount} / 9
+질문 {questionCount} / 4
     </span>
   </div>
 )}
           </div>
 
           {state.loading && <LoadingModal message={currentMessage} />}
+          
+          {/* 객관식 경험 추출 모달 */}
+          <McqModal
+            isOpen={showMcqModal}
+            onClose={() => setShowMcqModal(false)}
+            step={mcqStep}
+            question={mcqQuestion}
+            options={mcqOptions}
+            setOptions={setMcqOptions}
+            editingOptionId={editingOptionId}
+            setEditingOptionId={setEditingOptionId}
+            selectedMcqOptionId={selectedMcqOptionId}
+            setSelectedMcqOptionId={setSelectedMcqOptionId}
+            loading={mcqLoading}
+            showResult={mcqShowResult}
+            generatedAnswer={mcqGeneratedAnswer}
+            stakeholderQuestion={mcqStakeholderQuestion}
+            onSelect={handleMcqSelect}
+            onConfirm={handleMcqConfirm}
+            onRegenerate={handleMcqRegenerate}
+          />
         </div>
       )}
-
       {/* Episode Review */}
       {screen === 'summarized-episode-review' && (
         <div className="screen-container">
@@ -4262,33 +6664,23 @@ return (
             )}
           </div>
           <div className="action-buttons">
-            {currentExperienceStep < state.questionTopics.length ? (
-              <>
-                <button
-                  className="button-primary"
-                  onClick={() => {
-                    setCurrentExperienceStep(currentExperienceStep + 1);
-                    setScreen('direction-selection');
-                  }}
-                  disabled={state.loading}
-                >
-                  <GlassIcon type="write" size={20} style={{ marginRight: '8px' }} />
-                  <span>{`${state.questionTopics[currentExperienceStep]} 경험 구체화 하러 가기`}</span>
-                </button>
-                <button className="button-secondary" onClick={() => goToExperienceExtraction()} disabled={state.loading}>
-                  뒤로 가기
-                </button>
-              </>
+          {currentExperienceStep < state.questionTopics.length ? (
+              <button
+                className="button-primary"
+                onClick={() => {
+                  setCurrentExperienceStep(currentExperienceStep + 1);
+                  setScreen('direction-selection');
+                }}
+                disabled={state.loading}
+              >
+                <GlassIcon type="write" size={20} style={{ marginRight: '8px' }} />
+                <span>{`${state.questionTopics[currentExperienceStep]} 경험 구체화 하러 가기`}</span>
+              </button>
             ) : (
-              <>
-                <button className="button-primary" onClick={handlePlanRequest} disabled={state.loading}>
-                  <GlassIcon type="document" size={20} style={{ marginRight: '8px' }} />
-                  <span>계획표 만들러 가기</span>
-                </button>
-                <button className="button-secondary" onClick={() => goToExperienceExtraction()} disabled={state.loading}>
-                  뒤로 가기
-                </button>
-              </>
+              <button className="button-primary" onClick={handlePlanRequest} disabled={state.loading}>
+                <GlassIcon type="document" size={20} style={{ marginRight: '8px' }} />
+                <span>계획표 만들러 가기</span>
+              </button>
             )}
           </div>
           {state.loading && <LoadingModal message={currentMessage} />}
@@ -4320,15 +6712,13 @@ return (
                   ))}
                 </div>
               )}
-              <div className="action-buttons">
+     <div className="action-buttons">
                 <button className="button-primary" onClick={handleGenerateCoverLetter} disabled={state.loading}>
                   <GlassIcon type="write" size={20} style={{ marginRight: '8px' }} />
                   <span>자소서 생성하기</span>
                 </button>
-                <button className="button-tertiary" onClick={goToSummarizedEpisodeReview} disabled={state.loading}>
-                  뒤로 가기
-                </button>
               </div>
+            
             </>
           ) : (
             <p>계획서가 없습니다. 다시 요청해 주세요.</p>
@@ -4337,10 +6727,47 @@ return (
         </div>
       )}
 
-      {/* Cover Letter View - ✅ 수정됨 (가이드 반영 + 팝업 컴포넌트명 변경) */}
-      {screen === 'cover-letter-view' && (
-        <div className="screen-container">
-          <h2>{isProofreadingComplete ? '첨삭된 자소서' : '생성된 자소서'}</h2>
+{/* Cover Letter View - ✅ 수정됨 (가이드 반영 + 팝업 컴포넌트명 변경) */}
+{screen === 'cover-letter-view' && (
+        <>
+{(isProofreadingComplete || state.showProofreadingPopup || state.loading) && (         
+       <aside className="dashboard-sidebar">
+              <div className="sidebar-profile" onClick={() => navigate('/mypage')}>
+                <div className="profile-avatar">
+                  {email ? email[0].toUpperCase() : 'U'}
+                </div>
+              </div>
+              <div className="sidebar-spacer" />
+              <button className="sidebar-logout" onClick={() => { setScreen('start'); navigate('/search'); }} title="검색" style={{ marginBottom: '12px' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="M21 21l-4.35-4.35" />
+                </svg>
+              </button>
+              <button className="sidebar-logout" onClick={() => { setScreen('start'); navigate('/database'); }} title="데이터베이스" style={{ marginBottom: '12px' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <ellipse cx="12" cy="5" rx="9" ry="3" />
+                  <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                  <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+                </svg>
+              </button>
+              <button className="sidebar-logout" onClick={() => { setScreen('start'); navigate('/dashboard'); }} title="대시보드" style={{ marginBottom: '12px' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                  <polyline points="9 22 9 12 15 12 15 22" />
+                </svg>
+              </button>
+              <button className="sidebar-logout" onClick={() => { localStorage.clear(); window.location.href = '/login'; }} title="로그아웃">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+              </button>
+            </aside>
+          )}
+          <div className="screen-container">
+            <h2>{isProofreadingComplete ? '첨삭된 자소서' : '생성된 자소서'}</h2>
           <p className="description-text">
             {isProofreadingComplete
               ? '첨삭이 완료되었습니다. 문단을 클릭해서 직접 수정하거나, 느낌표 아이콘을 눌러 수정 내용을 확인하세요.'
@@ -4471,11 +6898,7 @@ return (
               </button>
             )}
 
-            <button className="button-secondary" onClick={goToPlanView} disabled={state.loading}>
-              뒤로 가기
-            </button>
-          </div>
-
+</div>
           {state.showProofreadingPopup && (
             <>
               <div className="modal-overlay" />
@@ -4496,7 +6919,8 @@ return (
           )}
 
           {state.loading && <LoadingModal message={currentMessage} />}
-        </div>
+          </div>
+        </>
       )}
 
       {/* Paragraph Edit */}
@@ -4583,9 +7007,7 @@ return (
               <GlassIcon type="check" size={20} style={{ marginRight: '8px' }} />
               <span>저장하고 다음 문단 수정하기</span>
             </button>
-            <button className="button-secondary" onClick={() => setScreen('cover-letter-view')} disabled={state.loading}>
-              뒤로 가기
-            </button>
+    
           </div>
 
           {showAiSuggestionPopup && (
@@ -4728,11 +7150,7 @@ return (
         <p className="empty-state">자소서가 없습니다. 다시 생성해 주세요.</p>
       )}
     </div>
-    <div className="action-buttons">
-      <button className="button-secondary" onClick={() => setScreen('cover-letter-view')} disabled={state.loading}>
-        뒤로 가기
-      </button>
-    </div>
+
     {state.loading && <LoadingModal message={currentMessage} />}
   </div>
 )}
@@ -5041,10 +7459,949 @@ return (
         backdrop-filter: blur(30px);
         -webkit-backdrop-filter: blur(30px);
       }
-    `}</style>
+ yoobyounghun@MacBook-Pro-2 frontend % sed -n '5385,5395p' src/App.js
+      }
+
+      .card:hover {
+        backdrop-filter: blur(30px);
+        -webkit-backdrop-filter: blur(30px);
+      }
+
+
+
+
+
+`}</style>
+      </main>
+    </div>
   </div>
 );
 }
 
+
+
+
+// 딥글 플로우 컴포넌트
+// 딥글 플로우 컴포넌트
+const DeepglFlow = ({ project, question, onBack }) => {
+  const { userId, email } = useAuth();
+    const navigate = useNavigate();
+  const [screen, setScreen] = useState('loading');
+  const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
+  const [selectedExperiences, setSelectedExperiences] = useState([]);
+  const [selectedExperienceIndex, setSelectedExperienceIndex] = useState(null);
+  const [error, setError] = useState('');
+  const [resumeId, setResumeId] = useState('');
+  const [analysisId, setAnalysisId] = useState('');
+  const [reuseData, setReuseData] = useState(null);
+  const [selectedAtoms, setSelectedAtoms] = useState([]);
+  const [reuseLoading, setReuseLoading] = useState(false);
+  const isInitializedRef = useRef(false);
+  // 초기 로딩 - 상태 확인 후 분기
+  useEffect(() => {
+    if (isInitializedRef.current) return;
+    isInitializedRef.current = true;
+  
+    const initFlow = async () => {
+      setScreen('loading');
+      setLoadingMessage('진행 상태를 확인하고 있습니다...');
+      
+      try {
+        // 0. 먼저 기존 진행 상태 확인
+        const stateRes = await fetch(
+          `${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/questions/${question.id}/state?projectId=${project.id}`
+        );
+        const stateData = await stateRes.json();
+        console.log('[DEBUG] Question state:', stateData);
+        console.log('[DEBUG] stateData.reuse_info:', stateData.reuse_info);
+        console.log('[DEBUG] stateData.reuseInfo:', stateData.reuseInfo);
+        // 상태에 따라 분기
+        if (stateData.success && stateData.status !== 'not_started') {
+          // 이미 진행 중인 문항 - 해당 화면으로 복원
+          const { status, analysisData, conversationState } = stateData;
+          
+          setResumeId(analysisData.resumeId || '');
+          setAnalysisId(analysisData.analysisId || '');
+          console.log('[DEBUG] analysisData:', analysisData);
+          setSelectedExperiences(analysisData.selectedExperiences || []);
+          
+          console.log('[DEBUG] Restoring to status:', status);
+          if (status === 'reuse_pending') {
+            // 재활용 제안 화면으로 이동
+            const reuseInfo = stateData.reuseInfo || stateData.reuse_info || question.reuse_info || project.reuse_info || {};
+            const selectedChains = reuseInfo.selectedChains || [];
+            const globalStrategy = reuseInfo.globalStrategy || {};
+            console.log('[DEBUG] reuse selectedChains:', selectedChains);
+            console.log('[DEBUG] globalStrategy:', globalStrategy);
+            if (selectedChains.length > 0) {
+              setReuseData({
+                companyName: project.company,
+                selectedChains: selectedChains,
+                globalStrategy: globalStrategy,
+                targetCompany: project.company
+              });
+              setScreen('reuse-selection');
+              return;
+            }
+          }
+            
+          if (status === 'direction') {
+            // 방향성 선택 화면 - 카드 데이터가 없으면 API 호출
+            if (!analysisData.selectedExperiences || analysisData.selectedExperiences.length === 0) {
+              const directionRes = await fetch(
+                `${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/projects/${project.id}/questions/${question.id}/direction?userId=${userId}`
+              );
+              const directionData = await directionRes.json();
+              console.log('[DEBUG] direction API 응답:', directionData);
+              
+              if (directionData.suggest_direction && directionData.suggest_direction.cards && directionData.suggest_direction.cards.length > 0) {
+                setSelectedExperiences(directionData.suggest_direction.cards);
+                setResumeId(directionData.resumeId || '');
+                setAnalysisId(directionData.analysisId || '');
+              }
+            }
+            setScreen('direction-selection');
+            return;
+          } else if (status === 'qa') {
+            // 문답 진행 중 - localStorage에 저장하고 App.js로 이동
+            const savedIndex = analysisData.selectedExperienceIndex ?? 0;
+            localStorage.setItem('deepgl_selected_experience', JSON.stringify({
+              projectId: project.id,
+              questionId: question.id,
+              selectedCard: analysisData.selectedExperiences[savedIndex],
+              selectedIndex: savedIndex,
+              resumeId: analysisData.resumeId,
+              analysisId: analysisData.analysisId,
+              selectedExperiences: analysisData.selectedExperiences,
+              questionTopics: analysisData.questionTopics || [question.text],
+              companyInfo: (analysisData.companyInfo && analysisData.companyInfo.company) 
+                ? analysisData.companyInfo 
+                : {
+                  company: project.company,
+                  jobTitle: project.jobTitle,
+                  jobTasks: project.jobTasks || '',
+                  jobRequirements: project.jobRequirements || ''
+                },
+              // 대화 상태 복원용
+              conversationState: conversationState
+            }));
+            navigate(`/?flow=experience-extraction&projectId=${project.id}&questionId=${question.id}&restore=true`);
+            return;
+            return;
+          } else if (status === 'episode' || status === 'plan' || status === 'letter' || status === 'done') {
+            // 에피소드 이후 단계 - App.js로 이동
+            const savedIndex = analysisData.selectedExperienceIndex ?? 0;
+            localStorage.setItem('deepgl_selected_experience', JSON.stringify({
+              projectId: project.id,
+              questionId: question.id,
+              selectedCard: analysisData.selectedExperiences[savedIndex],
+              selectedIndex: savedIndex,
+              resumeId: analysisData.resumeId,
+              analysisId: analysisData.analysisId,
+              selectedExperiences: analysisData.selectedExperiences,
+              questionTopics: analysisData.questionTopics || [question.text],
+              companyInfo: (analysisData.companyInfo && analysisData.companyInfo.company) ? analysisData.companyInfo : {
+                company: project.company,
+                jobTitle: project.jobTitle
+              },
+              restoreStatus: status,
+              episodeData: stateData.episodeData,
+              planData: stateData.planData,
+              coverLetterData: stateData.coverLetterData
+            }));
+            navigate(`/?flow=restore&projectId=${project.id}&questionId=${question.id}&status=${status}`);
+            return;
+          }
+        }
+
+      // 새 문항 - DB에서 이미 분석된 데이터 즉시 로드
+      setLoadingMessage('경험 카드를 불러오고 있습니다...');
+
+      const directionRes = await fetch(
+        `${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/projects/${project.id}/questions/${question.id}/direction?userId=${userId}`
+      );
+      const directionData = await directionRes.json();
+      console.log('[DEBUG] direction 응답:', directionData);
+
+      if (directionData.suggest_direction && directionData.suggest_direction.cards && directionData.suggest_direction.cards.length > 0) {
+        setResumeId(directionData.resumeId || '');
+        setAnalysisId(directionData.analysisId || '');
+        setSelectedExperiences(directionData.suggest_direction.cards);
+        setScreen('direction-selection');
+      } else {
+        setError('추천 경험을 찾지 못했습니다.');
+        setScreen('error');
+      }
+
+      } catch (err) {
+        console.error('딥글 플로우 초기화 실패:', err);
+        setError(err.message || '오류가 발생했습니다.');
+        setScreen('error');
+      }
+    };
+
+    initFlow();
+  }, [project, question, userId, navigate]);
+
+  // 경험 선택 핸들러
+  const handleExperienceSelect = (index) => {
+    setSelectedExperienceIndex(index);
+  };
+
+  // 로딩 화면
+  if (screen === 'loading') {
+    return (
+      <div className="deepgl-flow-container">
+        <div className="deepgl-flow-loading">
+          <div className="loading-logo-container">
+            <svg width="80" height="80" viewBox="0 0 200 200">
+              <defs>
+                <linearGradient id="flowLoadingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#9CA3AF" stopOpacity="0.3"/>
+                  <stop offset="100%" stopColor="#6B7280" stopOpacity="0.3"/>
+                </linearGradient>
+              </defs>
+              <circle cx="100" cy="100" r="80" fill="url(#flowLoadingGradient)" stroke="rgba(107, 114, 128, 0.5)" strokeWidth="2"/>
+              <rect x="92" y="40" width="16" height="120" fill="rgba(74, 85, 104, 0.8)" rx="8"/>
+              <rect x="40" y="92" width="120" height="16" fill="rgba(74, 85, 104, 0.8)" rx="8"/>
+            </svg>
+            <div className="pulse-ring pulse-ring-1"></div>
+            <div className="pulse-ring pulse-ring-2"></div>
+            <div className="pulse-ring pulse-ring-3"></div>
+          </div>
+          <p className="loading-message">{loadingMessage}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 에러 화면
+  if (screen === 'error') {
+    return (
+      <div className="deepgl-flow-container">
+        <div className="deepgl-flow-error">
+          <p>{error}</p>
+          <button className="button-primary" onClick={onBack}>
+            프로젝트로 돌아가기
+          </button>
+        </div>
+      </div>
+    );
+  }
+  if (screen === 'reuse-selection') {
+    const handleReuseConfirm = async () => {
+      setReuseLoading(true);
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/api/generate-reuse-episode`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            projectId: project.id,
+            questionId: question.id,
+            selectedChains: reuseData.selectedChains,
+            globalStrategy: reuseData.globalStrategy,
+            jobPosting: {
+              company: project.company,
+              jobTitle: project.jobTitle,
+              jobTasks: project.jobTasks || '',
+              jobRequirements: project.jobRequirements || ''
+            },
+            targetQuestion: question.text
+          })
+        });
+        const result = await response.json();
+        console.log('[DEBUG] generate-reuse-episode result:', result);
+        if (result.success) {
+          localStorage.setItem('deepgl_reused_episode', JSON.stringify({
+            projectId: project.id,
+            questionId: question.id,
+            episode: result.episode,
+            metadata: result.metadata,
+            companyInfo: { company: project.company, jobTitle: project.jobTitle },
+            talentProfile: reuseData.globalStrategy?.talentProfile || '',
+            coreCompetency: reuseData.globalStrategy?.coreCompetency || '',
+            questionText: question.text
+          }));
+          navigate(`/?flow=reused-episode&projectId=${project.id}&questionId=${question.id}`);
+        } else {
+          setError(result.error || '에피소드 생성에 실패했습니다.');
+        }
+      } catch (err) {
+        console.error('재활용 에피소드 생성 실패:', err);
+        setError('에피소드 생성에 실패했습니다.');
+      } finally {
+        setReuseLoading(false);
+      }
+    };
+    const handleReuseReject = async () => {
+      try {
+        // 1. 상태를 direction으로 변경
+        await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/api/projects/${project.id}/questions/${question.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, status: 'direction' })
+        });
+        
+        // 2. direction API 호출해서 경험 카드 로드
+        const directionRes = await fetch(
+          `${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/projects/${project.id}/questions/${question.id}/direction?userId=${userId}`
+        );
+        const directionData = await directionRes.json();
+        
+        if (directionData.suggest_direction && directionData.suggest_direction.cards && directionData.suggest_direction.cards.length > 0) {
+          setResumeId(directionData.resumeId || '');
+          setAnalysisId(directionData.analysisId || '');
+          setSelectedExperiences(directionData.suggest_direction.cards);
+        }
+      } catch (err) {
+        console.error('상태 변경 실패:', err);
+      }
+      setScreen('direction-selection');
+    };
+
+    // 로딩 상태일 때 전체화면 로딩 (사이드바 포함)
+    if (reuseLoading) {
+      return (
+        <div className="dashboard-layout">
+          <aside className="dashboard-sidebar">
+            <div className="sidebar-profile" onClick={() => navigate('/mypage')}>
+              <div className="profile-avatar">
+              {email ? email[0].toUpperCase() : 'U'}               
+                        </div>
+            </div>
+            <div className="sidebar-spacer" />
+            <button className="sidebar-logout" onClick={() => { setScreen('start'); navigate('/search'); }} title="검색" style={{ marginBottom: '12px' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+            </button>
+            <button className="sidebar-logout" onClick={() => { setScreen('start'); navigate('/database'); }} title="데이터베이스" style={{ marginBottom: '12px' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <ellipse cx="12" cy="5" rx="9" ry="3" />
+                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+              </svg>
+            </button>
+            <button className="sidebar-logout" onClick={() => { setScreen('start'); navigate('/dashboard'); }} title="대시보드" style={{ marginBottom: '12px' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
+            </button>
+            <button className="sidebar-logout" onClick={() => { localStorage.clear(); window.location.href = '/login'; }} title="로그아웃">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16,17 21,12 16,7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </button>
+          </aside>
+          <main style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#FBFBFD',
+            minHeight: '100vh'
+          }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '24px'
+            }}>
+              <div style={{
+                position: 'relative',
+                width: '80px',
+                height: '80px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <svg width="80" height="80" viewBox="0 0 200 200">
+                  <defs>
+                    <linearGradient id="reuseLoadingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#9CA3AF" stopOpacity="0.3"/>
+                      <stop offset="100%" stopColor="#6B7280" stopOpacity="0.3"/>
+                    </linearGradient>
+                  </defs>
+                  <circle cx="100" cy="100" r="80" fill="url(#reuseLoadingGradient)" stroke="rgba(107, 114, 128, 0.5)" strokeWidth="2"/>
+                  <rect x="92" y="40" width="16" height="120" fill="rgba(74, 85, 104, 0.8)" rx="8"/>
+                  <rect x="40" y="92" width="120" height="16" fill="rgba(74, 85, 104, 0.8)" rx="8"/>
+                </svg>
+                <div className="pulse-ring pulse-ring-1"></div>
+                <div className="pulse-ring pulse-ring-2"></div>
+                <div className="pulse-ring pulse-ring-3"></div>
+              </div>
+              <p style={{
+                color: '#4B5563',
+                fontSize: '17px',
+                fontWeight: '500',
+                margin: 0
+              }}>에피소드를 재구성하고 있습니다...</p>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    return (
+      <div className="dashboard-layout">
+        <aside className="dashboard-sidebar">
+          <div className="sidebar-profile" onClick={() => navigate('/mypage')}>
+            <div className="profile-avatar">
+            {email ? email[0].toUpperCase() : 'U'}       
+                       </div>
+          </div>
+          <div className="sidebar-spacer" />
+          <button className="sidebar-logout" onClick={() => { setScreen('start'); navigate('/search'); }} title="검색" style={{ marginBottom: '12px' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+          </button>
+          <button className="sidebar-logout" onClick={() => { setScreen('start'); navigate('/database'); }} title="데이터베이스" style={{ marginBottom: '12px' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <ellipse cx="12" cy="5" rx="9" ry="3" />
+              <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+              <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+            </svg>
+          </button>
+          <button className="sidebar-logout" onClick={() => { setScreen('start'); navigate('/dashboard'); }} title="대시보드" style={{ marginBottom: '12px' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </button>
+          <button className="sidebar-logout" onClick={() => { localStorage.clear(); window.location.href = '/login'; }} title="로그아웃">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16,17 21,12 16,7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
+        </aside>
+        <main style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          background: '#FBFBFD',
+          minHeight: '100vh',
+          overflow: 'auto',
+          padding: '40px 24px'
+        }}>
+          <div style={{ maxWidth: '640px', width: '100%' }}>
+            {/* 헤더 */}
+            <h1 style={{
+              fontSize: '28px',
+              fontWeight: '700',
+              color: '#1D1D1F',
+              marginBottom: '12px',
+              textAlign: 'center'
+            }}>
+              재활용 제안서
+            </h1>
+            
+            <p style={{
+              fontSize: '15px',
+              color: '#86868B',
+              marginBottom: '32px',
+              textAlign: 'center',
+              lineHeight: '1.6'
+            }}>
+              이전에 작성한 경험을 <strong style={{ color: '#1D1D1F' }}>{project.company}</strong>에 맞게 재구성합니다
+            </p>
+
+            {/* 강조할 역량 */}
+            {reuseData?.globalStrategy?.coreCompetency && (
+              <div style={{ marginBottom: '20px' }}>
+                <p style={{
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#86868B',
+                  marginBottom: '8px'
+                }}>
+                  강조할 역량
+                </p>
+                <div style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '16px 20px',
+                  border: '1px solid rgba(0,0,0,0.06)'
+                }}>
+                  <p style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#1D1D1F',
+                    margin: 0
+                  }}>
+                    {reuseData.globalStrategy.coreCompetency}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 맞춰야 할 인재상 */}
+            {reuseData?.globalStrategy?.talentProfile && (
+              <div style={{ marginBottom: '20px' }}>
+                <p style={{
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#86868B',
+                  marginBottom: '8px'
+                }}>
+                  맞춰야 할 인재상
+                </p>
+                <div style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '16px 20px',
+                  border: '1px solid rgba(0,0,0,0.06)'
+                }}>
+                  <p style={{
+                    fontSize: '15px',
+                    color: '#1D1D1F',
+                    margin: 0,
+                    lineHeight: '1.5'
+                  }}>
+                    {reuseData.globalStrategy.talentProfile}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 재구성 방향 */}
+            {reuseData?.globalStrategy?.storyAngle && (
+              <div style={{ marginBottom: '28px' }}>
+                <p style={{
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#86868B',
+                  marginBottom: '8px'
+                }}>
+                  재구성 방향
+                </p>
+                <div style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '16px 20px',
+                  border: '1px solid rgba(0,0,0,0.06)'
+                }}>
+                  <p style={{
+                    fontSize: '15px',
+                    color: '#1D1D1F',
+                    margin: 0,
+                    lineHeight: '1.5'
+                  }}>
+                    {reuseData.globalStrategy.storyAngle}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 활용할 내 경험 (체인 목록) */}
+            <div style={{ marginBottom: '32px' }}>
+              <p style={{
+                fontSize: '13px',
+                fontWeight: '600',
+                color: '#86868B',
+                marginBottom: '12px'
+              }}>
+                활용할 내 경험 ({reuseData?.selectedChains?.length || 0}개)
+              </p>
+              
+              <div style={{
+                background: 'white',
+                borderRadius: '16px',
+                border: '1px solid rgba(0,0,0,0.06)',
+                overflow: 'hidden'
+              }}>
+                {reuseData?.selectedChains?.map((chain, index) => (
+                  <div 
+                    key={chain.chainId || index}
+                    style={{
+                      padding: '20px',
+                      borderBottom: index < reuseData.selectedChains.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none'
+                    }}
+                  >
+                    {/* 번호 + 회사명 */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      marginBottom: '12px'
+                    }}>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '24px',
+                        height: '24px',
+                        background: 'rgba(74, 85, 104, 0.1)',
+                        borderRadius: '50%',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        color: '#4A5568'
+                      }}>
+                        {index + 1}
+                      </span>
+                      {chain.companyName && (
+                        <span style={{
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          color: '#86868B'
+                        }}>
+                          {chain.companyName}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Chain 흐름: precondition → action → postcondition */}
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      paddingLeft: '34px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', color: '#86868B', minWidth: '16px' }}>•</span>
+                        <p style={{ fontSize: '14px', color: '#1D1D1F', margin: 0, lineHeight: '1.5' }}>
+                          {chain.precondition}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', color: '#4A5568', minWidth: '16px' }}>→</span>
+                        <p style={{ fontSize: '14px', color: '#1D1D1F', margin: 0, lineHeight: '1.5', fontWeight: '500' }}>
+                          {chain.action}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', color: '#4A5568', minWidth: '16px' }}>→</span>
+                        <p style={{ fontSize: '14px', color: '#1D1D1F', margin: 0, lineHeight: '1.5' }}>
+                          {chain.postcondition}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Tags */}
+                    {chain.tags && chain.tags.length > 0 && (
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '6px',
+                        marginTop: '12px',
+                        paddingLeft: '34px'
+                      }}>
+                        {chain.tags.map((tag, tagIndex) => (
+                          <span
+                            key={tagIndex}
+                            style={{
+                              fontSize: '12px',
+                              color: '#4A5568',
+                              background: 'rgba(74, 85, 104, 0.08)',
+                              padding: '4px 10px',
+                              borderRadius: '6px'
+                            }}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {(!reuseData?.selectedChains || reuseData.selectedChains.length === 0) && (
+                  <div style={{ padding: '32px 20px', textAlign: 'center' }}>
+                    <p style={{ fontSize: '14px', color: '#86868B', margin: 0 }}>
+                      재활용 가능한 경험이 없습니다
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 하단 버튼 */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '16px'
+            }}>
+              <button
+                onClick={handleReuseReject}
+                style={{
+                  padding: '16px 32px',
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: '12px',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  color: '#1D1D1F',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => e.target.style.background = 'rgba(0,0,0,0.05)'}
+                onMouseLeave={(e) => e.target.style.background = 'transparent'}
+              >
+                경험 새롭게 구체화하기
+              </button>
+              <button
+                onClick={handleReuseConfirm}
+                disabled={!reuseData?.selectedChains?.length}
+                style={{
+                  padding: '16px 32px',
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: '12px',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  color: !reuseData?.selectedChains?.length ? '#D1D1D6' : '#1D1D1F',
+                  cursor: !reuseData?.selectedChains?.length ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (reuseData?.selectedChains?.length) e.target.style.background = 'rgba(0,0,0,0.05)';
+                }}
+                onMouseLeave={(e) => e.target.style.background = 'transparent'}
+              >
+                경험 재구성하기
+              </button>
+            </div>
+          </div>
+        </main>
+       
+      </div>
+    );
+  }
+
+  // 방향성 선택 화면
+  if (screen === 'direction-selection') {
+    return (
+      <div className="deepgl-flow-container">
+        <div className="deepgl-flow-header">
+          <button className="back-button" onClick={onBack}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            돌아가기
+          </button>
+          <div className="flow-title-section">
+            <h1>{question.text}</h1>
+            <p>{project.company} / {project.jobTitle} • {question.wordLimit || 1000}자</p>
+          </div>
+        </div>
+
+        <div className="deepgl-flow-content">
+          <h2>구체화 방향성 선택</h2>
+          <p className="flow-description">아래에서 자소서에 넣을 경험을 선택하세요</p>
+
+          <div className="experience-cards-grid">
+            {selectedExperiences.map((exp, index) => (
+              <div
+                key={index}
+                className={`experience-card ${selectedExperienceIndex === index ? 'selected' : ''}`}
+                onClick={() => handleExperienceSelect(index)}
+              >
+                <p className="card-title">{exp.company}</p>
+                <p className="card-description">{exp.description}</p>
+
+                <div className="card-section">
+                  <h4>매칭 정보</h4>
+                  <p><strong>주제:</strong> {exp.topic}</p>
+                  <p><strong>인재상:</strong> {exp.talentProfile || project.overallStrategy?.commonProfile?.talentProfile || '-'}</p>
+                  <p><strong>핵심역량:</strong> {exp.competency}</p>
+                </div>
+
+                <div className="card-section">
+                  <h4>딥글 분석 결과</h4>
+                  <p><strong>주제-경험:</strong> {exp.whySelected?.['주제-경험'] || '-'}</p>
+                  <p><strong>인재상-역량-경험:</strong> {exp.whySelected?.['인재상-역량-경험'] || exp.whySelected?.['역량-경험'] || '-'}</p>
+                  <p><strong>회사-경험:</strong> {exp.whySelected?.['회사-경험'] || '-'}</p>
+                </div>
+
+                {exp.integratedAnalysis && (
+                  <div className="card-section">
+                    <h4>통합분석</h4>
+                    <p>{exp.integratedAnalysis}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="flow-actions">
+            <button
+              className="button-primary"
+              disabled={selectedExperienceIndex === null}
+              onClick={async () => {
+                const selectedCard = selectedExperiences[selectedExperienceIndex];
+                
+        // DB에 선택한 인덱스 저장
+        try {
+          await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/projects/${project.id}/questions/${question.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: userId,
+              selectedExperienceIndex: selectedExperienceIndex,
+              status: 'qa'
+            })
+          });
+        } catch (err) {
+          console.error('인덱스 저장 실패:', err);
+        }
+        
+        // 선택된 경험 정보를 localStorage에 저장하고 기존 플로우로 이동
+        localStorage.setItem('deepgl_selected_experience', JSON.stringify({
+          projectId: project.id,
+          questionId: question.id,
+          selectedCard,
+          selectedIndex: selectedExperienceIndex,
+          resumeId: resumeId,
+          analysisId: analysisId,
+          selectedExperiences: selectedExperiences,
+          questionTopics: [selectedCard.topic],
+          companyInfo: {
+            company: project.company,
+            jobTitle: project.jobTitle,
+            jobTasks: project.jobTasks || '',
+            jobRequirements: project.jobRequirements || ''
+          }
+        }));
+        // 기존 App.js 플로우의 문답 화면으로 이동
+        navigate(`/?flow=experience-extraction&projectId=${project.id}&questionId=${question.id}`);
+      }}
+            >
+              경험 구체화하러 가기
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 채팅 화면 (임시)
+  if (screen === 'chat') {
+    return (
+      <div className="deepgl-flow-container">
+        <div className="deepgl-flow-header">
+          <button className="back-button" onClick={() => setScreen('direction-selection')}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            돌아가기
+          </button>
+          <div className="flow-title-section">
+            <h1>경험 구체화</h1>
+            <p>{project.company} / {project.jobTitle}</p>
+          </div>
+        </div>
+        <div className="deepgl-flow-content">
+          <p>채팅 화면이 여기에 표시됩니다.</p>
+          <p>선택된 경험: {selectedExperiences[selectedExperienceIndex]?.company}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 기본 반환
+  return null;
+};
+
+// 딥글 플로우 래퍼 컴포넌트
+const DeepglFlowWrapper = () => {
+  const { projectId, questionId } = useParams();
+  const navigate = useNavigate();
+  const { userId } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [projectData, setProjectData] = useState(null);
+  const [questionData, setQuestionData] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const response = await fetch(
+          `${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/projects/${projectId}?userId=${userId}`
+        );
+        const data = await response.json();
+        
+        if (data.project) {
+          setProjectData(data.project);
+          const question = data.questions?.find(q => q.id === questionId);
+          if (question) {
+            setQuestionData(question);
+          } else {
+            setError('문항을 찾을 수 없습니다.');
+          }
+        } else {
+          setError('프로젝트를 찾을 수 없습니다.');
+        }
+      } catch (err) {
+        console.error('데이터 로드 실패:', err);
+        setError('데이터를 불러오는데 실패했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (userId && projectId) {
+      loadData();
+    }
+  }, [projectId, questionId, userId]);
+
+  if (loading) {
+    return (
+      <div style={{
+        width: '100%',
+        height: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#FBFBFD'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ color: '#86868B' }}>불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !projectData || !questionData) {
+    return (
+      <div style={{
+        width: '100%',
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#FBFBFD',
+        gap: '16px'
+      }}>
+        <p style={{ color: '#FF3B30' }}>{error || '데이터를 찾을 수 없습니다.'}</p>
+        <button 
+          className="button-primary"
+          onClick={() => navigate(`/project/${projectId}`)}
+        >
+          프로젝트로 돌아가기
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <DeepglFlow 
+      project={projectData} 
+      question={questionData}
+      onBack={() => navigate(`/project/${projectId}`)}
+    />
+  );
+};
+
 export default App;
-// End of Section 3
