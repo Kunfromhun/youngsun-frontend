@@ -127,7 +127,7 @@ const DashboardPage = () => {
       </aside>
       <main className="dashboard-main">
         <div className="dashboard-header">
-          <h1>My Deepgl</h1>
+          <h1>My DeepGL</h1>
           <p className="dashboard-subtitle">자기소개서 프로젝트를 관리하세요</p>
         </div>
 
