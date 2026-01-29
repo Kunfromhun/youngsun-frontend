@@ -79,7 +79,7 @@ const LoginPage = ({ onLoginSuccess }) => {
               <rect x="40" y="92" width="120" height="16" fill="rgba(74, 85, 104, 0.8)" rx="8"/>
             </svg>
           </div>
-          <h1 className="logo-text">DEEPGL</h1>
+          <h1 className="logo-text">DeepGL</h1>
           <p className="logo-subtitle">AI 자기소개서 도우미</p>
         </div>
 

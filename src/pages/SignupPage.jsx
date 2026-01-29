@@ -68,7 +68,7 @@ const SignupPage = () => {
       <div className="login-container">
         <div className="login-logo">
           <h1 className="logo-text">회원가입</h1>
-          <p className="logo-subtitle">DEEPGL과 함께 시작하세요</p>
+          <p className="logo-subtitle">DeepGL과 함께 시작하세요</p>
         </div>
 
         <form className="login-form" onSubmit={handleSubmit}>

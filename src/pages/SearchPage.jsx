@@ -113,7 +113,7 @@ const SearchPage = () => {
 
       <main className="dashboard-main">
         <div className="dashboard-header">
-          <h1>DeepGL Search</h1>
+          <h1>My DeepGL Search</h1>
           <p className="dashboard-subtitle">프로젝트, 문항, 에피소드, 자소서를 검색하세요</p>
         </div>
 
