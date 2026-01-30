@@ -1194,11 +1194,11 @@ const [starMcqSelections, setStarMcqSelections] = useState([]); // 이전 선택
 const [starMcqAnswers, setStarMcqAnswers] = useState({}); // { S: '...', T: '...', A: '...', R: '...' }
 // v3.0: 중첩 심화형 추가 state
 const [depthSelections, setDepthSelections] = useState([]); // 현재 STAR 내 심화 선택들
-const [previousSelections, setPreviousSelections] = useState([]); // 완료된 STAR들 [{type, summary, fullAnswer}, ...]
+// previousSelections 제거됨 - starInputs에서 직접 previousStarContents 생성
 const [currentDepth, setCurrentDepth] = useState(1); // 현재 심화 단계
 const [contextSummary, setContextSummary] = useState(''); // 누적 요약 (질문에 표시용)
 const [isCategory, setIsCategory] = useState(false); // R 카테고리 선택 여부
-// 객관식 보기 편집 모드 state// 객관식 보기 편집 모드 state
+// // 객관식 보기 편집 모드 state// 객관식 보기 편집 모드 state
 const [editingOptionId, setEditingOptionId] = useState(null); // 현재 편집 중인 옵션 ID
 // 객관식 선택 state (제출 전 임시 저장)
 const [selectedSituationId, setSelectedSituationId] = useState(null);
@@ -1215,12 +1215,175 @@ const [starInputs, setStarInputs] = useState({
   result: ''
 });
 const [inputMode, setInputMode] = useState('text');
+const [currentStarStep, setCurrentStarStep] = useState('S'); // 현재 진행 중인 STAR 단계: 'S' | 'T' | 'A' | 'R' | 'DONE'
 const handleModeSwitch = useCallback(() => setInputMode('text'), []);
+
+// ============================================
+// STAR 순차 진행 API 호출 함수들
+// ============================================
+
+const fetchNextStarQuestion = async (completedStarType) => {
+  try {
+    dispatch({ type: 'SET_CHAT_LOADING', chatLoading: true, message: '다음 질문을 준비하고 있습니다...' });
+    
+    // starInputs에서 previousStarContents 생성
+    const previousStarContents = {};
+    if (starInputs.situation?.trim()) previousStarContents.S = starInputs.situation;
+    if (starInputs.task?.trim()) previousStarContents.T = starInputs.task;
+    if (starInputs.action?.trim()) previousStarContents.A = starInputs.action;
+    if (starInputs.result?.trim()) previousStarContents.R = starInputs.result;
+    
+    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-next-star-question`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        completedStarType,
+        previousStarContents,
+        projectId: currentProjectId,
+        questionId: currentQuestionId
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // 다음 STAR 단계로 업데이트
+      setCurrentStarStep(data.nextStarType);
+      
+      // inputFields에 새 필드 동적 추가
+      const labelMap = { 'S': '상황', 'T': '과제', 'A': '행동', 'R': '결과' };
+      const fieldKeyMap = { 'S': 'situation', 'T': 'task', 'A': 'action', 'R': 'result' };
+      const fieldKey = fieldKeyMap[data.nextStarType];
+      
+      const newField = {
+        key: fieldKey,
+        label: `${data.nextStarType} (${labelMap[data.nextStarType]})`,
+        placeholder: {
+          line1: data.question || '',
+          line2: data.placeholder || ''
+        }
+      };
+      
+      // inputFields에 새 필드 추가 (기존 필드 유지)
+      setInputFields(prev => [...(prev || []), newField]);
+      
+      // starDisplayTexts 업데이트
+      setStarDisplayTexts(prev => ({
+        ...prev,
+        [fieldKey]: {
+          line1: data.question || '',
+          line2: data.placeholder || ''
+        }
+      }));
+      
+      // 메인질문은 유지 (chatHistory에 추가하지 않음)
+      
+    } else {
+      console.error('다음 STAR 질문 생성 실패:', data.error);
+    }
+  } catch (error) {
+    console.error('다음 STAR 질문 API 호출 실패:', error);
+  } finally {
+    dispatch({ type: 'SET_CHAT_LOADING', chatLoading: false });
+  }
+};
+
+// Phase 2 질문 가져오기 (STAR 완료 후)
+const fetchEpisodeDetailQuestion = async () => {
+  try {
+    dispatch({ type: 'SET_CHAT_LOADING', chatLoading: true, message: '에피소드 완성 질문을 준비하고 있습니다...' });
+    
+    // Phase 1 starInputs 저장
+    const phase1StarContents = {
+      S: starInputs.situation || '',
+      T: starInputs.task || '',
+      A: starInputs.action || '',
+      R: starInputs.result || ''
+    };
+    
+    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-episode-detail-question`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        starContents: phase1StarContents,
+        projectId: currentProjectId,
+        questionId: currentQuestionId
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // ✅ Phase 2로 전환
+      setCurrentPhaseNumber(2);
+      
+      // ✅ STAR 단계 리셋 (Phase 2 STAR 시작을 위해 S로)
+      setCurrentStarStep('S');
+      
+      // ✅ STAR 입력 초기화 (Phase 2용)
+      setStarInputs({ situation: '', task: '', action: '', result: '' });
+      
+      // ✅ Phase 2 STAR inputFields 설정
+      if (data.inputFields && data.inputFields.length > 0) {
+        setInputFields(data.inputFields);
+        setInputMode('star');
+        
+        const targets = {};
+        data.inputFields.forEach(field => {
+          targets[field.key] = {
+            line1: field.placeholder?.line1 || '',
+            line2: field.placeholder?.line2 || ''
+          };
+        });
+        setStarDisplayTexts(targets);
+      } else {
+        // inputFields가 없으면 기본 S 필드 생성
+        const defaultSField = [{
+          key: 'situation',
+          label: 'S (상황)',
+          placeholder: {
+            line1: data.question || '',
+            line2: data.placeholder || ''
+          }
+        }];
+        setInputFields(defaultSField);
+        setInputMode('star');
+        setStarDisplayTexts({
+          situation: {
+            line1: data.question || '',
+            line2: data.placeholder || ''
+          }
+        });
+      }
+      
+      // 타이프라이터 효과로 Phase 2 메인질문 표시
+      typewriterEffect(data.question, () => {
+        setChatHistory(prev => [...prev, {
+          sender: '딥글',
+          message: data.question,
+          hint: data.placeholder || ''
+        }]);
+        
+        if (data.placeholder) {
+          setCurrentQuestionHint(data.placeholder);
+        }
+      });
+      
+      console.log(`[${new Date().toISOString()}] Phase 2 STAR started`);
+      
+    } else {
+      console.error('Phase 2 질문 생성 실패:', data.error);
+    }
+  } catch (error) {
+    console.error('Phase 2 질문 API 호출 실패:', error);
+  } finally {
+    dispatch({ type: 'SET_CHAT_LOADING', chatLoading: false });
+  }
+};
 
 // ============================================
 // 메인질문 상황 재제시 함수들
 // ============================================
-
 // 메인질문 🖐️ 클릭 시 호출
 const handleMainQuestionHelp = async () => {
   setSituationLoading(true);
@@ -1384,13 +1547,20 @@ const handleStarMcqStart = async (starType) => {
     const selectedExperience = state.selectedExperiences?.[selectedIndex];
     const currentWhySelected = selectedExperience?.whySelected || {};
     
+    // starInputs에서 previousStarContents 생성
+    const previousStarContents = {};
+    if (starInputs.situation?.trim()) previousStarContents.S = starInputs.situation;
+    if (starInputs.task?.trim()) previousStarContents.T = starInputs.task;
+    if (starInputs.action?.trim()) previousStarContents.A = starInputs.action;
+    if (starInputs.result?.trim()) previousStarContents.R = starInputs.result;
+    
     const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         starType: starType,
         currentPhase: ['S', 'T', 'A', 'R'].indexOf(starType) + 1,
-        previousSelections: previousSelections,
+        previousStarContents: previousStarContents,
         depthSelections: [],
         whySelected: currentWhySelected,
         selectedCard: {
@@ -1422,7 +1592,6 @@ const handleStarMcqStart = async (starType) => {
     setStarMcqLoading(false);
   }
 };
-
 // STAR 객관식 선택 시 호출 (v3.0: 심화 계속, 자동 이동 없음)
 const handleStarMcqSelect = async (selectedOption) => {
   const currentStarType = starMcqType;
@@ -1438,6 +1607,13 @@ const handleStarMcqSelect = async (selectedOption) => {
     const selectedExperience = state.selectedExperiences?.[selectedIndex];
     const currentWhySelected = selectedExperience?.whySelected || {};
     
+    // starInputs에서 previousStarContents 생성
+    const previousStarContents = {};
+    if (starInputs.situation?.trim()) previousStarContents.S = starInputs.situation;
+    if (starInputs.task?.trim()) previousStarContents.T = starInputs.task;
+    if (starInputs.action?.trim()) previousStarContents.A = starInputs.action;
+    if (starInputs.result?.trim()) previousStarContents.R = starInputs.result;
+    
     // 심화 계속 (isComplete: false)
     const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq-answer`, {
       method: 'POST',
@@ -1448,7 +1624,7 @@ const handleStarMcqSelect = async (selectedOption) => {
         selectedOption: selectedOption,
         depthSelections: depthSelections,
         isComplete: false,
-        previousSelections: previousSelections,
+        previousStarContents: previousStarContents,
         whySelected: currentWhySelected,
         selectedCard: {
           company: selectedExperience?.company || '',
@@ -1480,7 +1656,6 @@ const handleStarMcqSelect = async (selectedOption) => {
     setStarMcqLoading(false);
   }
 };
-
 // 다음 심화 질문 가져오기
 const fetchNextDepthQuestion = async (starType, currentDepthSelections) => {
   try {
@@ -1489,13 +1664,20 @@ const fetchNextDepthQuestion = async (starType, currentDepthSelections) => {
     const selectedExperience = state.selectedExperiences?.[selectedIndex];
     const currentWhySelected = selectedExperience?.whySelected || {};
     
+    // starInputs에서 previousStarContents 생성
+    const previousStarContents = {};
+    if (starInputs.situation?.trim()) previousStarContents.S = starInputs.situation;
+    if (starInputs.task?.trim()) previousStarContents.T = starInputs.task;
+    if (starInputs.action?.trim()) previousStarContents.A = starInputs.action;
+    if (starInputs.result?.trim()) previousStarContents.R = starInputs.result;
+    
     const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         starType: starType,
         currentPhase: ['S', 'T', 'A', 'R'].indexOf(starType) + 1,
-        previousSelections: previousSelections,
+        previousStarContents: previousStarContents,
         depthSelections: currentDepthSelections,
         whySelected: currentWhySelected,
         selectedCard: {
@@ -1527,104 +1709,20 @@ const fetchNextDepthQuestion = async (starType, currentDepthSelections) => {
     setStarMcqLoading(false);
   }
 };
-
-// "다음 질문으로 넘어가기" 클릭 시 (현재 STAR 완료 → 다음 STAR로)
-const handleStarMcqNextStar = async () => {
-  const currentStarType = starMcqType;
-  
-  setStarMcqLoading(true);
-  setStarMcqQuestion('답변을 정리하고 있습니다...');
-  setStarMcqOptions([]);
-  
-  try {
-    const currentTopicIndex = currentExperienceStep - 1;
-    const selectedIndex = state.selectedExperiencesIndices[currentTopicIndex];
-    const selectedExperience = state.selectedExperiences?.[selectedIndex];
-    const currentWhySelected = selectedExperience?.whySelected || {};
-    
-    // 현재 STAR 완료 처리 (isComplete: true)
-    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq-answer`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        starType: currentStarType,
-        question: starMcqQuestion,
-        selectedOption: depthSelections.length > 0 
-        ? { text: depthSelections[depthSelections.length - 1].selected }
-        : { text: '' },      
-          depthSelections: depthSelections,
-        isComplete: true,
-        previousSelections: previousSelections,
-        whySelected: currentWhySelected,
-        selectedCard: {
-          company: selectedExperience?.company || '',
-          description: selectedExperience?.description || ''
-        },
-        companyInfo: {
-          company: state.companyInfo?.company || '',
-          jobTitle: state.companyInfo?.jobTitle || ''
-        },
-        projectId: currentProjectId,
-        questionId: currentQuestionId
-      })
-    });
-    
-    const data = await response.json();
-    if (data.success && data.isComplete) {
-      // 완료된 STAR를 previousSelections에 추가
-      const completedStar = {
-        type: currentStarType,
-        summary: data.summary || '',
-        fullAnswer: data.fullAnswer || ''
-      };
-      const newPreviousSelections = [...previousSelections, completedStar];
-      setPreviousSelections(newPreviousSelections);
-      
-      // STAR 입력창에 답변 자동 채움
-      const fieldKeyMap = { 'S': 'situation', 'T': 'task', 'A': 'action', 'R': 'result' };
-      const fieldKey = fieldKeyMap[currentStarType];
-      setStarInputs(prev => ({ ...prev, [fieldKey]: data.fullAnswer || '' }));
-      
-      // starMcqAnswers에도 저장
-      const newAnswers = { ...starMcqAnswers, [currentStarType]: data.fullAnswer || '' };
-      setStarMcqAnswers(newAnswers);
-      
-      // 다음 STAR로 이동
-      const starOrder = ['S', 'T', 'A', 'R'];
-      const currentIndex = starOrder.indexOf(currentStarType);
-      
-      if (currentIndex < 3) {
-        // 다음 STAR 시작
-        const nextStarType = starOrder[currentIndex + 1];
-        setStarMcqType(nextStarType);
-        setDepthSelections([]);
-        setCurrentDepth(1);
-        setContextSummary('');
-        setIsCategory(false);
-        
-        // 다음 STAR 첫 질문 요청
-        await fetchNextStarFirstQuestion(nextStarType, newPreviousSelections);
-      } else {
-        // 모든 STAR 완료
-        handleStarMcqComplete(newAnswers);
-      }
-    } else {
-      console.error('STAR 완료 처리 실패:', data.error);
-      setStarMcqLoading(false);
-    }
-  } catch (error) {
-    console.error('STAR 완료 API 호출 실패:', error);
-    setStarMcqLoading(false);
-  }
-};
-
 // 다음 STAR 첫 질문 가져오기
-const fetchNextStarFirstQuestion = async (starType, newPreviousSelections) => {
+const fetchNextStarFirstQuestion = async (starType, updatedStarInputs) => {
   try {
     const currentTopicIndex = currentExperienceStep - 1;
     const selectedIndex = state.selectedExperiencesIndices[currentTopicIndex];
     const selectedExperience = state.selectedExperiences?.[selectedIndex];
     const currentWhySelected = selectedExperience?.whySelected || {};
+    
+    // updatedStarInputs에서 previousStarContents 생성
+    const previousStarContents = {};
+    if (updatedStarInputs.situation?.trim()) previousStarContents.S = updatedStarInputs.situation;
+    if (updatedStarInputs.task?.trim()) previousStarContents.T = updatedStarInputs.task;
+    if (updatedStarInputs.action?.trim()) previousStarContents.A = updatedStarInputs.action;
+    if (updatedStarInputs.result?.trim()) previousStarContents.R = updatedStarInputs.result;
     
     const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq`, {
       method: 'POST',
@@ -1632,7 +1730,7 @@ const fetchNextStarFirstQuestion = async (starType, newPreviousSelections) => {
       body: JSON.stringify({
         starType: starType,
         currentPhase: ['S', 'T', 'A', 'R'].indexOf(starType) + 1,
-        previousSelections: newPreviousSelections,
+        previousStarContents: previousStarContents,
         depthSelections: [],
         whySelected: currentWhySelected,
         selectedCard: {
@@ -1664,7 +1762,94 @@ const fetchNextStarFirstQuestion = async (starType, newPreviousSelections) => {
     setStarMcqLoading(false);
   }
 };
-
+// "다음 질문으로 넘어가기" 클릭 시 (현재 STAR 완료 → 메인화면 복귀)
+const handleStarMcqNextStar = async () => {
+  const currentStarType = starMcqType;
+  
+  setStarMcqLoading(true);
+  setStarMcqQuestion('답변을 정리하고 있습니다...');
+  setStarMcqOptions([]);
+  
+  try {
+    const currentTopicIndex = currentExperienceStep - 1;
+    const selectedIndex = state.selectedExperiencesIndices[currentTopicIndex];
+    const selectedExperience = state.selectedExperiences?.[selectedIndex];
+    const currentWhySelected = selectedExperience?.whySelected || {};
+    
+    // starInputs에서 previousStarContents 생성
+    const previousStarContents = {};
+    if (starInputs.situation?.trim()) previousStarContents.S = starInputs.situation;
+    if (starInputs.task?.trim()) previousStarContents.T = starInputs.task;
+    if (starInputs.action?.trim()) previousStarContents.A = starInputs.action;
+    if (starInputs.result?.trim()) previousStarContents.R = starInputs.result;
+    
+    // 현재 STAR 완료 처리 (isComplete: true)
+    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq-answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        starType: currentStarType,
+        question: starMcqQuestion,
+        selectedOption: depthSelections.length > 0 
+          ? { text: depthSelections[depthSelections.length - 1].selected }
+          : { text: '' },
+        depthSelections: depthSelections,
+        isComplete: true,
+        previousStarContents: previousStarContents,
+        whySelected: currentWhySelected,
+        selectedCard: {
+          company: selectedExperience?.company || '',
+          description: selectedExperience?.description || ''
+        },
+        companyInfo: {
+          company: state.companyInfo?.company || '',
+          jobTitle: state.companyInfo?.jobTitle || ''
+        },
+        projectId: currentProjectId,
+        questionId: currentQuestionId
+      })
+    });
+    
+    const data = await response.json();
+    if (data.success && data.isComplete) {
+      // STAR 입력창에 답변 자동 채움
+      const fieldKeyMap = { 'S': 'situation', 'T': 'task', 'A': 'action', 'R': 'result' };
+      const fieldKey = fieldKeyMap[currentStarType];
+      setStarInputs(prev => ({ ...prev, [fieldKey]: data.fullAnswer || '' }));
+      
+      // starMcqAnswers에도 저장
+      const newAnswers = { ...starMcqAnswers, [currentStarType]: data.fullAnswer || '' };
+      setStarMcqAnswers(newAnswers);
+      
+      // 현재 STAR 단계 업데이트
+      setCurrentStarStep(currentStarType);
+      
+      // 객관식 모달 닫기 → 메인화면 복귀
+      setShowStarMcq(false);
+      setStarMcqType('');
+      setStarMcqQuestion('');
+      setStarMcqOptions([]);
+      setDepthSelections([]);
+      setCurrentDepth(1);
+      setContextSummary('');
+      setIsCategory(false);
+      setStarMcqLoading(false);
+      
+      // 모든 STAR 완료 시 (R까지 완료)
+      const starOrder = ['S', 'T', 'A', 'R'];
+      const currentIndex = starOrder.indexOf(currentStarType);
+      if (currentIndex >= 3) {
+        handleStarMcqComplete(newAnswers);
+      }
+    } else {
+      console.error('STAR 완료 처리 실패:', data.error);
+      setStarMcqLoading(false);
+    }
+  } catch (error) {
+    console.error('STAR 완료 API 호출 실패:', error);
+    setStarMcqLoading(false);
+  }
+};
 // STAR 객관식 완료 시 호출
 const handleStarMcqComplete = async (answers) => {
   try {
@@ -1697,7 +1882,7 @@ const handleStarMcqComplete = async (answers) => {
     setStarMcqOptions([]);
     setStarMcqSelections([]);
     setDepthSelections([]);
-    setPreviousSelections([]);
+  
     setCurrentDepth(1);
     setContextSummary('');
   } catch (error) {
@@ -1720,7 +1905,7 @@ const handleStarMcqCancel = () => {
   setStarMcqQuestion('');
   setStarMcqOptions([]);
   setDepthSelections([]);
-  setPreviousSelections([]);
+
   setCurrentDepth(1);
   setContextSummary('');
 };
@@ -2045,17 +2230,36 @@ coreCompetency: coreCompetency || ''
         if (conversationState.lastHint) {
           setCurrentQuestionHint(conversationState.lastHint);
         }
-        // phaseNumber 복원
-        if (conversationState.lastPhaseNumber) {
-          setCurrentPhaseNumber(conversationState.lastPhaseNumber);
-          console.log('[DEBUG] Restored phaseNumber:', conversationState.lastPhaseNumber);
         
+        // ✅ Phase 복원 (새 필드 우선, 없으면 기존 필드)
+        const restoredPhase = conversationState.currentPhase || conversationState.lastPhaseNumber || 1;
+        setCurrentPhaseNumber(restoredPhase);
+        console.log('[DEBUG] Restored phase:', restoredPhase);
+        
+        // ✅ STAR 단계 복원
+        if (conversationState.currentStarType) {
+          setCurrentStarStep(conversationState.currentStarType);
+          console.log('[DEBUG] Restored starStep:', conversationState.currentStarType);
         }
+        
+        // ✅ STAR 입력값 복원 (starContents에서)
+        if (conversationState.starContents) {
+          const restoredInputs = {
+            situation: conversationState.starContents.S || '',
+            task: conversationState.starContents.T || '',
+            action: conversationState.starContents.A || '',
+            result: conversationState.starContents.R || ''
+          };
+          setStarInputs(restoredInputs);
+          console.log('[DEBUG] Restored starInputs:', restoredInputs);
+        }
+        
+        // ✅ inputFields 복원
         if (conversationState.lastInputFields) {
           setInputFields(conversationState.lastInputFields);
           setInputMode('star');
           
-          // ✅ 즉시 placeholder 설정
+          // 즉시 placeholder 설정
           const targets = {};
           conversationState.lastInputFields.forEach(field => {
             targets[field.key] = {
@@ -2064,6 +2268,47 @@ coreCompetency: coreCompetency || ''
             };
           });
           setStarDisplayTexts(targets);
+        }
+        
+        // ✅ STAR 완료 여부 체크
+        if (conversationState.starMcqCompleted) {
+          setCurrentStarStep('DONE');
+          console.log('[DEBUG] STAR already completed');
+          return;
+        }
+        
+        // ✅ 미완료 STAR MCQ 자동 시작 (복원 후)
+        if (conversationState.starContents || conversationState.starMcqProgress) {
+          const starOrder = ['S', 'T', 'A', 'R'];
+          const starContents = conversationState.starContents || {};
+          const starMcqProgress = conversationState.starMcqProgress || {};
+          
+          // 완료된 STAR 찾기 (starContents에 값이 있거나 starMcqProgress에 fullAnswer가 있는 것)
+          const completedStars = starOrder.filter(type => 
+            (starContents[type] && starContents[type].trim()) ||
+            (starMcqProgress[type]?.fullAnswer)
+          );
+          
+          // 미완료 STAR 중 첫 번째 찾기
+          const nextStarType = starOrder.find(type => !completedStars.includes(type));
+          
+          if (nextStarType) {
+            console.log(`[DEBUG] Incomplete STAR found: ${nextStarType}, starting MCQ...`);
+            console.log(`[DEBUG] Completed STARs: ${completedStars.join(', ') || 'none'}`);
+            
+            // 해당 STAR의 진행 상태 확인
+            const progress = starMcqProgress[nextStarType];
+            
+            setTimeout(() => {
+              if (progress?.depthSelections?.length > 0) {
+                // 이미 진행 중인 depth가 있으면 해당 상태로 복원
+                setDepthSelections(progress.depthSelections);
+                setCurrentDepth(progress.depthSelections.length + 1);
+              }
+              // MCQ 직접 시작 (fetchNextStarQuestion 호출 X)
+              handleStarMcqStart(nextStarType);
+            }, 500);
+          }
         }
         return;
       }
@@ -2867,24 +3112,30 @@ const typewriterSTARTexts = (fields, onComplete) => {
         setCurrentPhaseNumber(data.phaseNumber);
         console.log(`[${new Date().toISOString()}] Phase number received: ${data.phaseNumber}`);
       }
-    // v25.3: STAR inputFields 업데이트 + 타이프라이터 효과
-    if (data.inputFields) {
-      setInputFields(data.inputFields);
-      setInputMode('star');
-      setStarInputs({ situation: '', task: '', action: '', result: '' });
-      
-      // ✅ 즉시 placeholder 설정
-      const targets = {};
-      data.inputFields.forEach(field => {
-        targets[field.key] = {
-          line1: field.placeholder?.line1 || '',
-          line2: field.placeholder?.line2 || ''
-        };
-      });
-      setStarDisplayTexts(targets);
-      
-      console.log(`[${new Date().toISOString()}] STAR inputFields updated:`, data.inputFields);
-    }
+// v25.3: STAR inputFields 업데이트 + 타이프라이터 효과
+if (data.inputFields) {
+  setInputFields(data.inputFields);
+  setInputMode('star');
+  setStarInputs({ situation: '', task: '', action: '', result: '' });
+  
+  // ✅ Phase 1 시작 표시 (최초 시작 시에만)
+  if (currentPhaseNumber === 0) {
+    setCurrentPhaseNumber(1);
+  }
+  setCurrentStarStep('S');
+  
+  // ✅ 즉시 placeholder 설정
+  const targets = {};
+  data.inputFields.forEach(field => {
+    targets[field.key] = {
+      line1: field.placeholder?.line1 || '',
+      line2: field.placeholder?.line2 || ''
+    };
+  });
+  setStarDisplayTexts(targets);
+  
+  console.log(`[${new Date().toISOString()}] STAR started (Phase ${currentPhaseNumber || 1}), inputFields updated:`, data.inputFields);
+}
    
       dispatch({ type: 'SET_CHAT_LOADING', chatLoading: false });
    
@@ -2925,13 +3176,10 @@ const typewriterSTARTexts = (fields, onComplete) => {
     dispatch({ type: 'SET_CHAT_LOADING', chatLoading: false });
     setCurrentAnswer('');
   };
-
   const handleChatSubmit = async () => {
     if (isSubmitting) return;
-
     // v25.3: 입력 모드에 따라 다른 데이터 처리
     let userAnswer;
-
     if (inputMode === 'star') {
       const hasAnyInput = Object.values(starInputs).some(v => v.trim());
       if (!hasAnyInput) return;
@@ -2943,39 +3191,83 @@ const typewriterSTARTexts = (fields, onComplete) => {
     
     setIsSubmitting(true);
     
-    // 메인 질문 버블 페이드아웃
+// STAR 모드일 때: 순차 진행 로직 (메인질문 유지, 애니메이션 없음)
+if (inputMode === 'star' && currentStarStep !== 'DONE') {
+  const starOrder = ['S', 'T', 'A', 'R'];
+  const currentIndex = starOrder.indexOf(currentStarStep);
+  
+  setIsSubmitting(false);
+  
+  if (currentIndex < 3) {
+    // S, T, A 완료 → 다음 STAR 질문 요청
+    await fetchNextStarQuestion(currentStarStep);
+  } else {
+    // R 완료 → Phase 구분
+    if (currentPhaseNumber < 2) {
+      // Phase 1 R 완료 → Phase 2 메인질문 + STAR 시작
+      await fetchEpisodeDetailQuestion();
+    } else {
+      // Phase 2 R 완료 → complete-star-mcq 호출 후 에피소드 생성
+      setCurrentStarStep('DONE');
+      setInputMode('text');
+      const currentTopic = state.questionTopics[currentExperienceStep - 1] || '경험';
+      
+      // ✅ 먼저 complete-star-mcq 호출 (isComplete: true 저장)
+      try {
+        const starAnswers = {
+          S: starInputs.situation || '',
+          T: starInputs.task || '',
+          A: starInputs.action || '',
+          R: starInputs.result || ''
+        };
+        
+        await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/complete-star-mcq`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectId: currentProjectId,
+            questionId: currentQuestionId,
+            starAnswers
+          })
+        });
+        console.log('[DEBUG] Phase 2 complete-star-mcq called successfully');
+      } catch (error) {
+        console.error('[DEBUG] Phase 2 complete-star-mcq failed:', error);
+      }
+      
+      // ✅ 그 다음 에피소드 생성
+      typewriterEffect(`자, 이제 ${currentTopic} 구체화가 끝났습니다. 에피소드를 생성하겠습니다.`, () => {
+        setChatHistory(prev => [...prev, {
+          sender: '딥글',
+          message: `자, 이제 ${currentTopic} 구체화가 끝났습니다. 에피소드를 생성하겠습니다.`
+        }]);
+        setTimeout(() => {
+          handleSummarizeEpisodes();
+        }, 1500);
+      });
+    }
+  }
+  return;
+}
+    
+    // 텍스트 모드: 기존 로직 (메인 질문 버블 페이드아웃)
     const currentBubble = document.querySelector('.focus-question-bubble');
     if (currentBubble) {
       currentBubble.style.animation = 'slideOutToRight 0.6s ease-in-out forwards';
     }
     
-    // STAR 모드일 때만 텍스트 페이드아웃
-    if (inputMode === 'star') {
-      const starTextLines = document.querySelectorAll('.star-text-line1, .star-text-line2');
-      starTextLines.forEach(el => {
-        el.style.animation = 'slideOutToRight 0.6s ease-in-out forwards';
-      });
-    }
-    
-    setTimeout(() => {
-      const currentStep = questionCount;
-      
-      // 입력 리셋 (질문 생성 전에 먼저 실행)
-      setCurrentAnswer('');
-      setStarInputs({ situation: '', task: '', action: '', result: '' });
-      
-      // ✅ STAR 관련 상태 완전 리셋 (새 질문 받기 전 초기화)
-      setInputFields(null);
-      setInputMode('text');
-      setStarDisplayTexts({});
-      
+    setTimeout(async () => {
       setIsSubmitting(false);
       
-      // 질문 생성 (typewriterSTARTexts가 displayTexts를 업데이트함)
+      const currentStep = questionCount;
+      
+      // 입력 리셋
+      setCurrentAnswer('');
+      
+      // 질문 생성
       handleGenerateQuestion(userAnswer, currentStep + 1);
     }, 800);
   };
-
   // ✅ 수정: handleSummarizeEpisodes
 
 
