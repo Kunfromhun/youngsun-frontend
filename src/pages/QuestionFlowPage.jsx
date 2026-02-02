@@ -5,7 +5,7 @@ import { projectApi } from '../lib/api';
 import ReuseProposalModal from '../components/ReuseProposalModal';
 import EpisodePreviewModal from '../components/EpisodePreviewModal';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 // 브라우저 알림 발송
 const sendNotification = (title, body) => {
@@ -168,7 +168,7 @@ if (currentQuestion.status === 'reuse_pending') {
           userId,
           projectId,
           questionId,
-          selectedChains: reuseData.selectedChains,
+          episodeId: reuseData.selectedEpisode?.episodeId || reuseData.questionChains?.[questionId]?.selectedEpisode?.episodeId,
           globalStrategy: reuseData.globalStrategy,
           jobPosting: {
             company: project.company,

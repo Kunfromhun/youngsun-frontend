@@ -1197,8 +1197,16 @@ const [depthSelections, setDepthSelections] = useState([]); // 현재 STAR 내 �
 // previousSelections 제거됨 - starInputs에서 직접 previousStarContents 생성
 const [currentDepth, setCurrentDepth] = useState(1); // 현재 심화 단계
 const [contextSummary, setContextSummary] = useState(''); // 누적 요약 (질문에 표시용)
-const [isCategory, setIsCategory] = useState(false); // R 카테고리 선택 여부
-// // 객관식 보기 편집 모드 state// 객관식 보기 편집 모드 state
+const [starMcqPurpose, setStarMcqPurpose] = useState(''); // 질문 목적 (객관식에 표시용)
+// STAR 질문 편집 관련 state
+const [editingStarQuestion, setEditingStarQuestion] = useState(false); // 질문 편집 모드
+const [editedStarQuestionText, setEditedStarQuestionText] = useState(''); // 편집 중인 질문 텍스트
+const [regeneratingOptions, setRegeneratingOptions] = useState(false); // 보기 재생성 로딩
+// 에피소드 수정 관련 state
+const [editingEpisodeIndex, setEditingEpisodeIndex] = useState(null); // 수정 중인 에피소드 인덱스
+const [editedEpisodeText, setEditedEpisodeText] = useState(''); // 수정 중인 에피소드 텍스트
+const [savingEpisode, setSavingEpisode] = useState(false); // 에피소드 저장 로딩
+const [isCategory, setIsCategory] = useState(false); // R 카테고리 선택 여부// // 객관식 보기 편집 모드 state// 객관식 보기 편집 모드 state
 const [editingOptionId, setEditingOptionId] = useState(null); // 현재 편집 중인 옵션 ID
 // 객관식 선택 state (제출 전 임시 저장)
 const [selectedSituationId, setSelectedSituationId] = useState(null);
@@ -1287,7 +1295,6 @@ const fetchNextStarQuestion = async (completedStarType) => {
     dispatch({ type: 'SET_CHAT_LOADING', chatLoading: false });
   }
 };
-
 // Phase 2 질문 가져오기 (STAR 완료 후)
 const fetchEpisodeDetailQuestion = async () => {
   try {
@@ -1316,47 +1323,24 @@ const fetchEpisodeDetailQuestion = async () => {
     if (data.success) {
       // ✅ Phase 2로 전환
       setCurrentPhaseNumber(2);
-      
-      // ✅ STAR 단계 리셋 (Phase 2 STAR 시작을 위해 S로)
+      setQuestionCount(2);      
+      // ✅ STAR 단계 리셋
       setCurrentStarStep('S');
       
-      // ✅ STAR 입력 초기화 (Phase 2용)
+      // ✅ STAR 입력 초기화
       setStarInputs({ situation: '', task: '', action: '', result: '' });
       
-      // ✅ Phase 2 STAR inputFields 설정
-      if (data.inputFields && data.inputFields.length > 0) {
-        setInputFields(data.inputFields);
-        setInputMode('star');
-        
-        const targets = {};
-        data.inputFields.forEach(field => {
-          targets[field.key] = {
-            line1: field.placeholder?.line1 || '',
-            line2: field.placeholder?.line2 || ''
-          };
-        });
-        setStarDisplayTexts(targets);
-      } else {
-        // inputFields가 없으면 기본 S 필드 생성
-        const defaultSField = [{
-          key: 'situation',
-          label: 'S (상황)',
-          placeholder: {
-            line1: data.question || '',
-            line2: data.placeholder || ''
-          }
-        }];
-        setInputFields(defaultSField);
-        setInputMode('star');
-        setStarDisplayTexts({
-          situation: {
-            line1: data.question || '',
-            line2: data.placeholder || ''
-          }
-        });
-      }
+      // ✅ Phase 2: 단일 입력창 모드
+      setInputMode('text');
+      setInputFields(null);
+      setStarDisplayTexts({
+        situation: { line1: '', line2: '' },
+        task: { line1: '', line2: '' },
+        action: { line1: '', line2: '' },
+        result: { line1: '', line2: '' }
+      });
       
-      // 타이프라이터 효과로 Phase 2 메인질문 표시
+      // 타이프라이터 효과로 Phase 2 보충질문 표시
       typewriterEffect(data.question, () => {
         setChatHistory(prev => [...prev, {
           sender: '딥글',
@@ -1369,7 +1353,7 @@ const fetchEpisodeDetailQuestion = async () => {
         }
       });
       
-      console.log(`[${new Date().toISOString()}] Phase 2 STAR started`);
+      console.log('[Phase2] 단일 입력창 모드로 전환, 보충질문:', data.question);
       
     } else {
       console.error('Phase 2 질문 생성 실패:', data.error);
@@ -1539,7 +1523,8 @@ const handleStarMcqStart = async (starType) => {
   setDepthSelections([]);
   setCurrentDepth(1);
   setContextSummary('');
-  setIsCategory(false);
+  setStarMcqPurpose('');
+    setIsCategory(false);
   
   try {
     const currentTopicIndex = currentExperienceStep - 1;
@@ -1553,27 +1538,34 @@ const handleStarMcqStart = async (starType) => {
     if (starInputs.task?.trim()) previousStarContents.T = starInputs.task;
     if (starInputs.action?.trim()) previousStarContents.A = starInputs.action;
     if (starInputs.result?.trim()) previousStarContents.R = starInputs.result;
-    
+    const requestBody = starType === 'PHASE2' ? {
+      starType: 'PHASE2',
+      currentPhase: 2,
+      depthSelections: [],
+      projectId: currentProjectId,
+      questionId: currentQuestionId
+    } : {
+      starType: starType,
+      currentPhase: ['S', 'T', 'A', 'R'].indexOf(starType) + 1,
+      previousStarContents: previousStarContents,
+      depthSelections: [],
+      whySelected: currentWhySelected,
+      selectedCard: {
+        company: selectedExperience?.company || '',
+        description: selectedExperience?.description || ''
+      },
+      companyInfo: {
+        company: state.companyInfo?.company || '',
+        jobTitle: state.companyInfo?.jobTitle || ''
+      },
+      projectId: currentProjectId,
+      questionId: currentQuestionId
+    };
+
     const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        starType: starType,
-        currentPhase: ['S', 'T', 'A', 'R'].indexOf(starType) + 1,
-        previousStarContents: previousStarContents,
-        depthSelections: [],
-        whySelected: currentWhySelected,
-        selectedCard: {
-          company: selectedExperience?.company || '',
-          description: selectedExperience?.description || ''
-        },
-        companyInfo: {
-          company: state.companyInfo?.company || '',
-          jobTitle: state.companyInfo?.jobTitle || ''
-        },
-        projectId: currentProjectId,
-        questionId: currentQuestionId
-      })
+      body: JSON.stringify(requestBody)
     });
     
     const data = await response.json();
@@ -1582,6 +1574,7 @@ const handleStarMcqStart = async (starType) => {
       setStarMcqOptions(data.options || []);
       setCurrentDepth(data.depth || 1);
       setContextSummary(data.contextSummary || '');
+      setStarMcqPurpose(data.purpose || '');
       setIsCategory(data.isCategory || false);
     } else {
       console.error('STAR 객관식 생성 실패:', data.error);
@@ -1615,28 +1608,39 @@ const handleStarMcqSelect = async (selectedOption) => {
     if (starInputs.result?.trim()) previousStarContents.R = starInputs.result;
     
     // 심화 계속 (isComplete: false)
+    // 심화 계속 (isComplete: false)
+    const answerBody = currentStarType === 'PHASE2' ? {
+      starType: 'PHASE2',
+      question: currentQuestion,
+      selectedOption: selectedOption,
+      depthSelections: depthSelections,
+      isComplete: false,
+      projectId: currentProjectId,
+      questionId: currentQuestionId
+    } : {
+      starType: currentStarType,
+      question: currentQuestion,
+      selectedOption: selectedOption,
+      depthSelections: depthSelections,
+      isComplete: false,
+      previousStarContents: previousStarContents,
+      whySelected: currentWhySelected,
+      selectedCard: {
+        company: selectedExperience?.company || '',
+        description: selectedExperience?.description || ''
+      },
+      companyInfo: {
+        company: state.companyInfo?.company || '',
+        jobTitle: state.companyInfo?.jobTitle || ''
+      },
+      projectId: currentProjectId,
+      questionId: currentQuestionId
+    };
+
     const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq-answer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        starType: currentStarType,
-        question: currentQuestion,
-        selectedOption: selectedOption,
-        depthSelections: depthSelections,
-        isComplete: false,
-        previousStarContents: previousStarContents,
-        whySelected: currentWhySelected,
-        selectedCard: {
-          company: selectedExperience?.company || '',
-          description: selectedExperience?.description || ''
-        },
-        companyInfo: {
-          company: state.companyInfo?.company || '',
-          jobTitle: state.companyInfo?.jobTitle || ''
-        },
-        projectId: currentProjectId,
-        questionId: currentQuestionId
-      })
+      body: JSON.stringify(answerBody)
     });
     
     const data = await response.json();
@@ -1670,27 +1674,34 @@ const fetchNextDepthQuestion = async (starType, currentDepthSelections) => {
     if (starInputs.task?.trim()) previousStarContents.T = starInputs.task;
     if (starInputs.action?.trim()) previousStarContents.A = starInputs.action;
     if (starInputs.result?.trim()) previousStarContents.R = starInputs.result;
-    
+    const depthBody = starType === 'PHASE2' ? {
+      starType: 'PHASE2',
+      currentPhase: 2,
+      depthSelections: currentDepthSelections,
+      projectId: currentProjectId,
+      questionId: currentQuestionId
+    } : {
+      starType: starType,
+      currentPhase: ['S', 'T', 'A', 'R'].indexOf(starType) + 1,
+      previousStarContents: previousStarContents,
+      depthSelections: currentDepthSelections,
+      whySelected: currentWhySelected,
+      selectedCard: {
+        company: selectedExperience?.company || '',
+        description: selectedExperience?.description || ''
+      },
+      companyInfo: {
+        company: state.companyInfo?.company || '',
+        jobTitle: state.companyInfo?.jobTitle || ''
+      },
+      projectId: currentProjectId,
+      questionId: currentQuestionId
+    };
+
     const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        starType: starType,
-        currentPhase: ['S', 'T', 'A', 'R'].indexOf(starType) + 1,
-        previousStarContents: previousStarContents,
-        depthSelections: currentDepthSelections,
-        whySelected: currentWhySelected,
-        selectedCard: {
-          company: selectedExperience?.company || '',
-          description: selectedExperience?.description || ''
-        },
-        companyInfo: {
-          company: state.companyInfo?.company || '',
-          jobTitle: state.companyInfo?.jobTitle || ''
-        },
-        projectId: currentProjectId,
-        questionId: currentQuestionId
-      })
+      body: JSON.stringify(depthBody)
     });
     
     const data = await response.json();
@@ -1699,6 +1710,7 @@ const fetchNextDepthQuestion = async (starType, currentDepthSelections) => {
       setStarMcqOptions(data.options || []);
       setCurrentDepth(data.depth || currentDepthSelections.length + 1);
       setContextSummary(data.contextSummary || '');
+      setStarMcqPurpose(data.purpose || '');
       setIsCategory(data.isCategory || false);
     } else {
       console.error('STAR 심화 질문 생성 실패:', data.error);
@@ -1782,65 +1794,83 @@ const handleStarMcqNextStar = async () => {
     if (starInputs.task?.trim()) previousStarContents.T = starInputs.task;
     if (starInputs.action?.trim()) previousStarContents.A = starInputs.action;
     if (starInputs.result?.trim()) previousStarContents.R = starInputs.result;
+// 현재 STAR 완료 처리 (isComplete: true)
+const completeBody = currentStarType === 'PHASE2' ? {
+  starType: 'PHASE2',
+  question: starMcqQuestion,
+  selectedOption: depthSelections.length > 0 
+    ? { text: depthSelections[depthSelections.length - 1].selected }
+    : { text: '' },
+  depthSelections: depthSelections,
+  isComplete: true,
+  projectId: currentProjectId,
+  questionId: currentQuestionId
+} : {
+  starType: currentStarType,
+  question: starMcqQuestion,
+  selectedOption: depthSelections.length > 0 
+    ? { text: depthSelections[depthSelections.length - 1].selected }
+    : { text: '' },
+  depthSelections: depthSelections,
+  isComplete: true,
+  previousStarContents: previousStarContents,
+  whySelected: currentWhySelected,
+  selectedCard: {
+    company: selectedExperience?.company || '',
+    description: selectedExperience?.description || ''
+  },
+  companyInfo: {
+    company: state.companyInfo?.company || '',
+    jobTitle: state.companyInfo?.jobTitle || ''
+  },
+  projectId: currentProjectId,
+  questionId: currentQuestionId
+};
+
+const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq-answer`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(completeBody)
+});
+
+const data = await response.json();
+if (data.success && data.isComplete) {
+  if (currentStarType === 'PHASE2') {
+    // ✅ Phase 2: fullAnswer를 textarea에 세팅
+    setCurrentAnswer(data.fullAnswer || '');
+    console.log('[Phase2] 객관식 완료, textarea에 세팅:', data.fullAnswer);
+  } else {
+    // Phase 1: 기존 STAR 입력창에 채움
+    const fieldKeyMap = { 'S': 'situation', 'T': 'task', 'A': 'action', 'R': 'result' };
+    const fieldKey = fieldKeyMap[currentStarType];
+    setStarInputs(prev => ({ ...prev, [fieldKey]: data.fullAnswer || '' }));
     
-    // 현재 STAR 완료 처리 (isComplete: true)
-    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq-answer`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        starType: currentStarType,
-        question: starMcqQuestion,
-        selectedOption: depthSelections.length > 0 
-          ? { text: depthSelections[depthSelections.length - 1].selected }
-          : { text: '' },
-        depthSelections: depthSelections,
-        isComplete: true,
-        previousStarContents: previousStarContents,
-        whySelected: currentWhySelected,
-        selectedCard: {
-          company: selectedExperience?.company || '',
-          description: selectedExperience?.description || ''
-        },
-        companyInfo: {
-          company: state.companyInfo?.company || '',
-          jobTitle: state.companyInfo?.jobTitle || ''
-        },
-        projectId: currentProjectId,
-        questionId: currentQuestionId
-      })
-    });
+    // starMcqAnswers에도 저장
+    const newAnswers = { ...starMcqAnswers, [currentStarType]: data.fullAnswer || '' };
+    setStarMcqAnswers(newAnswers);
     
-    const data = await response.json();
-    if (data.success && data.isComplete) {
-      // STAR 입력창에 답변 자동 채움
-      const fieldKeyMap = { 'S': 'situation', 'T': 'task', 'A': 'action', 'R': 'result' };
-      const fieldKey = fieldKeyMap[currentStarType];
-      setStarInputs(prev => ({ ...prev, [fieldKey]: data.fullAnswer || '' }));
-      
-      // starMcqAnswers에도 저장
-      const newAnswers = { ...starMcqAnswers, [currentStarType]: data.fullAnswer || '' };
-      setStarMcqAnswers(newAnswers);
-      
-      // 현재 STAR 단계 업데이트
-      setCurrentStarStep(currentStarType);
-      
-      // 객관식 모달 닫기 → 메인화면 복귀
-      setShowStarMcq(false);
-      setStarMcqType('');
-      setStarMcqQuestion('');
-      setStarMcqOptions([]);
-      setDepthSelections([]);
-      setCurrentDepth(1);
-      setContextSummary('');
-      setIsCategory(false);
-      setStarMcqLoading(false);
-      
-      // 모든 STAR 완료 시 (R까지 완료)
-      const starOrder = ['S', 'T', 'A', 'R'];
-      const currentIndex = starOrder.indexOf(currentStarType);
-      if (currentIndex >= 3) {
-        handleStarMcqComplete(newAnswers);
-      }
+    // 현재 STAR 단계 업데이트
+    setCurrentStarStep(currentStarType);
+    
+    // 모든 STAR 완료 시 (R까지 완료)
+    const starOrder = ['S', 'T', 'A', 'R'];
+    const currentIndex = starOrder.indexOf(currentStarType);
+    if (currentIndex >= 3) {
+      handleStarMcqComplete(newAnswers);
+    }
+  }
+  
+  // 객관식 모달 닫기 → 메인화면 복귀
+  setShowStarMcq(false);
+  setStarMcqType('');
+  setStarMcqQuestion('');
+  setStarMcqOptions([]);
+  setDepthSelections([]);
+  setCurrentDepth(1);
+  setContextSummary('');
+  setStarMcqPurpose('');
+    setIsCategory(false);
+  setStarMcqLoading(false);
     } else {
       console.error('STAR 완료 처리 실패:', data.error);
       setStarMcqLoading(false);
@@ -1885,7 +1915,8 @@ const handleStarMcqComplete = async (answers) => {
   
     setCurrentDepth(1);
     setContextSummary('');
-  } catch (error) {
+    setStarMcqPurpose('');
+    } catch (error) {
     console.error('STAR 완료 API 호출 실패:', error);
   }
 };
@@ -1908,9 +1939,106 @@ const handleStarMcqCancel = () => {
 
   setCurrentDepth(1);
   setContextSummary('');
-};
+  setStarMcqPurpose('');};
 
-// 상황 선택 취소 (원래 화면으로)
+  // STAR 질문 수정 후 보기 재생성
+  const handleRegenerateStarMcqOptions = async () => {
+    if (!editedStarQuestionText.trim()) {
+      alert('질문을 입력해주세요.');
+      return;
+    }
+    
+    setRegeneratingOptions(true);
+    setStarMcqOptions([]);
+    
+    try {
+      // previousStarContents 생성
+      const previousStarContents = {};
+      if (starInputs.situation) previousStarContents.S = starInputs.situation;
+      if (starInputs.task) previousStarContents.T = starInputs.task;
+      if (starInputs.action) previousStarContents.A = starInputs.action;
+      if (starInputs.result) previousStarContents.R = starInputs.result;
+      
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/regenerate-star-mcq-options`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: currentProjectId,
+          questionId: currentQuestionId,
+          starType: starMcqType,
+          depth: currentDepth,
+          editedQuestion: editedStarQuestionText,
+          depthSelections: depthSelections,
+          previousStarContents: previousStarContents
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setStarMcqQuestion(data.editedQuestion);
+        setStarMcqOptions(data.options || []);
+        setEditingStarQuestion(false);
+        setEditedStarQuestionText('');
+      } else {
+        console.error('보기 재생성 실패:', data.error);
+        alert('보기 재생성에 실패했습니다. 다시 시도해주세요.');
+      }
+    } catch (error) {
+      console.error('보기 재생성 API 호출 실패:', error);
+      alert('서버 오류가 발생했습니다.');
+    } finally {
+      setRegeneratingOptions(false);
+    }
+  };
+
+  // 에피소드 수정 API 호출
+  const handleUpdateEpisode = async (episodeIndex) => {
+    if (!editedEpisodeText.trim()) {
+      alert('에피소드 내용을 입력해주세요.');
+      return;
+    }
+    
+    setSavingEpisode(true);
+    
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/update-session-episode`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: currentProjectId,
+          questionId: currentQuestionId,
+          editedEpisode: editedEpisodeText
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // state 업데이트
+        const updatedEpisodes = [...state.summarizedEpisodes];
+        updatedEpisodes[episodeIndex] = {
+          ...updatedEpisodes[episodeIndex],
+          episode: data.episode
+        };
+        dispatch({ type: 'SET_SUMMARIZED_EPISODES', summarizedEpisodes: updatedEpisodes });
+        
+        setEditingEpisodeIndex(null);
+        setEditedEpisodeText('');
+        alert('에피소드가 수정되었습니다.');
+      } else {
+        console.error('에피소드 수정 실패:', data.error);
+        alert('에피소드 수정에 실패했습니다. 다시 시도해주세요.');
+      }
+    } catch (error) {
+      console.error('에피소드 수정 API 호출 실패:', error);
+      alert('서버 오류가 발생했습니다.');
+    } finally {
+      setSavingEpisode(false);
+    }
+  };
+  
+  // 상황 선택 취소 (원래 화면으로)
 const handleSituationCancel = () => {
   setShowSituationSelection(false);
   setSituationOptions([]);
@@ -2061,6 +2189,102 @@ const [starDisplayTexts, setStarDisplayTexts] = useState({
   result: { line1: '', line2: '' }
 });
 const [isStarTextAnimating, setIsStarTextAnimating] = useState(false);
+
+// ============================================
+// ✅ 세션 런타임 초기화 함수
+// 하위딥글(문항) 진입 시 호출하여 이전 문항 데이터 오염 방지
+// 백엔드 DB의 사전분석 데이터는 건드리지 않음
+// ============================================
+const resetSessionState = useCallback(() => {
+  console.log('[resetSessionState] 세션 런타임 state 초기화');
+
+  // 1. 문답 관련
+  setChatHistory([]);
+  setCurrentAnswer('');
+  setQuestionCount(0);
+  setCurrentExperienceStep(1);
+  setCurrentPhaseNumber(0);
+  setError(null);
+
+  // 2. STAR 입력 관련
+  setStarInputs({ situation: '', task: '', action: '', result: '' });
+  setInputFields(null);
+  setInputMode('text');
+  setCurrentStarStep('S');
+  setStarDisplayTexts({
+    situation: { line1: '', line2: '' },
+    task: { line1: '', line2: '' },
+    action: { line1: '', line2: '' },
+    result: { line1: '', line2: '' }
+  });
+  setIsStarTextAnimating(false);
+
+  // 3. 객관식 관련
+  setShowMcqModal(false);
+  setMcqStep(1);
+  setMcqQuestion('');
+  setMcqOptions([]);
+  setMcqSelections([]);
+  setMcqLoading(false);
+  setMcqGeneratedAnswer('');
+  setMcqShowResult(false);
+  setMcqCurrentField('');
+  setMcqStakeholderQuestion('');
+  setMcqMainQuestion('');
+
+  // 4. 상황 재제시 관련
+  setShowSituationSelection(false);
+  setSituationOptions([]);
+  setSituationCoreLogic('');
+  setSituationLoading(false);
+
+  // 5. STAR 객관식 관련
+  setShowStarMcq(false);
+  setStarMcqType('');
+  setStarMcqQuestion('');
+  setStarMcqOptions([]);
+  setStarMcqLoading(false);
+  setStarMcqSelections([]);
+  setStarMcqAnswers({});
+
+  // 6. 심화/편집/선택 관련
+  setDepthSelections([]);
+  setCurrentDepth(1);
+  setContextSummary('');
+  setStarMcqPurpose('');
+    setIsCategory(false);
+  setEditingOptionId(null);
+  setSelectedSituationId(null);
+  setSelectedStarOptionId(null);
+  setSelectedMcqOptionId(null);
+
+  // 7. 힌트 관련
+  setCurrentQuestionHint('');
+  setShowHintTooltip(false);
+
+  // 8. 에피소드/계획서/자소서 관련
+  dispatch({ type: 'SET_SUMMARIZED_EPISODES', summarizedEpisodes: [] });
+  dispatch({ type: 'SET_EPISODE_ANALYSIS', episodeAnalysis: [] });
+  dispatch({ type: 'SET_PLAN', plan: '', source: [], processing: '', nextStep: '', summarizedExperiences: [] });
+  dispatch({ type: 'SET_COVER_LETTER', paragraphs: [] });
+  dispatch({ type: 'SET_COVER_LETTER_TEXT', text: '' });
+  dispatch({ type: 'SET_AI_SCREENING', suggestions: [] });
+  dispatch({ type: 'SET_AI_PROOFREADING', suggestions: [] });
+  dispatch({ type: 'SET_PROOFREADING_POPUP', show: false });
+  dispatch({ type: 'SET_LOADING', loading: false, message: '' });
+  dispatch({ type: 'SET_CHAT_LOADING', chatLoading: false, message: '' });
+
+  // 9. 팝업/UI 관련
+  setShowPlanPopup(false);
+  setShowPlanTransitionPopup(false);
+  setCurrentParagraphId(null);
+  setEditedParagraphText('');
+  setShowAiSuggestionPopup(null);
+  setIsSubmitting(false);
+  setIsProofreadingComplete(false);
+  setShowEditInfoPopup(null);
+}, []);
+
  
   // Simplified popup positions
   const [aiSuggestionPopupPosition, setAiSuggestionPopupPosition] = useState({ x: window.innerWidth / 2 - 200, y: window.innerHeight / 2 - 150 });
@@ -2072,10 +2296,6 @@ const [isStarTextAnimating, setIsStarTextAnimating] = useState(false);
 // URL 파라미터로 딥글 플로우 진입 처리
 // URL 파라미터로 딥글 플로우 진입 처리
 useEffect(() => {
-  // 문답 화면에서는 이 useEffect 실행 안 함 (리렌더링 최적화)
-  if (screen === 'experience-extraction' || screen === 'summarized-episode-review' || screen === 'plan-view' || screen === 'cover-letter-view') {
-    return;
-  }
   
   const urlParams = new URLSearchParams(location.search);
   const flow = urlParams.get('flow');
@@ -2092,9 +2312,16 @@ useEffect(() => {
 
   // flow=experience-extraction 처리 (문답 화면)
   if (flow === 'experience-extraction' && projectId && questionId) {
+    resetSessionState();
     const savedData = localStorage.getItem('deepgl_selected_experience');
     if (savedData) {
       const parsedData = JSON.parse(savedData);
+      // 문항 ID 불일치 시 무시 (이전 문항 잔여 데이터 방지)
+      if (parsedData.questionId && parsedData.questionId !== questionId) {
+        console.log('[DEBUG] localStorage 문항 불일치 - 무시:', parsedData.questionId, '!==', questionId);
+        localStorage.removeItem('deepgl_selected_experience');
+        return;
+      }
       console.log('[DEBUG] parsedData:', parsedData);
       const { selectedCard, selectedIndex, resumeId, analysisId, selectedExperiences, questionTopics, companyInfo, conversationState, talentProfile, coreCompetency, userId } = parsedData;     
        console.log('[DEBUG] resumeId:', resumeId);      console.log('[DEBUG] analysisId:', analysisId);
@@ -2219,12 +2446,21 @@ coreCompetency: coreCompetency || ''
         return;
       }
       
-      // ✅ 저장된 질문이 있으면 바로 표시 (API 호출 X)
-      if (conversationState.lastQuestion) {
-        console.log('[DEBUG] Restoring last question from DB');
+   // ✅ 저장된 질문이 있으면 바로 표시 (API 호출 X)
+      // mainQuestion(메인질문) 우선, 없으면 lastQuestion(STAR질문) 사용
+      const displayQuestion = conversationState.regeneratedQuestion?.mainQuestion 
+        || conversationState.mainQuestion 
+        || conversationState.lastQuestion;
+      
+      if (displayQuestion) {
+        console.log('[DEBUG] Restoring question from DB:', {
+          mainQuestion: conversationState.regeneratedQuestion?.mainQuestion || conversationState.mainQuestion,
+          lastQuestion: conversationState.lastQuestion,
+          using: displayQuestion
+        });
         setChatHistory(prev => [...prev, { 
           sender: '딥글', 
-          message: conversationState.lastQuestion, 
+          message: displayQuestion, 
           hint: conversationState.lastHint || '' 
         }]);
         if (conversationState.lastHint) {
@@ -2242,77 +2478,143 @@ coreCompetency: coreCompetency || ''
           console.log('[DEBUG] Restored starStep:', conversationState.currentStarType);
         }
         
-        // ✅ STAR 입력값 복원 (starContents에서)
-        if (conversationState.starContents) {
-          const restoredInputs = {
-            situation: conversationState.starContents.S || '',
-            task: conversationState.starContents.T || '',
-            action: conversationState.starContents.A || '',
-            result: conversationState.starContents.R || ''
-          };
-          setStarInputs(restoredInputs);
-          console.log('[DEBUG] Restored starInputs:', restoredInputs);
-        }
-        
-        // ✅ inputFields 복원
-        if (conversationState.lastInputFields) {
-          setInputFields(conversationState.lastInputFields);
-          setInputMode('star');
-          
-          // 즉시 placeholder 설정
-          const targets = {};
-          conversationState.lastInputFields.forEach(field => {
-            targets[field.key] = {
-              line1: field.placeholder?.line1 || '',
-              line2: field.placeholder?.line2 || ''
-            };
-          });
-          setStarDisplayTexts(targets);
-        }
-        
-        // ✅ STAR 완료 여부 체크
-        if (conversationState.starMcqCompleted) {
-          setCurrentStarStep('DONE');
-          console.log('[DEBUG] STAR already completed');
-          return;
-        }
-        
-        // ✅ 미완료 STAR MCQ 자동 시작 (복원 후)
-        if (conversationState.starContents || conversationState.starMcqProgress) {
-          const starOrder = ['S', 'T', 'A', 'R'];
-          const starContents = conversationState.starContents || {};
-          const starMcqProgress = conversationState.starMcqProgress || {};
-          
-          // 완료된 STAR 찾기 (starContents에 값이 있거나 starMcqProgress에 fullAnswer가 있는 것)
-          const completedStars = starOrder.filter(type => 
-            (starContents[type] && starContents[type].trim()) ||
-            (starMcqProgress[type]?.fullAnswer)
-          );
-          
-          // 미완료 STAR 중 첫 번째 찾기
-          const nextStarType = starOrder.find(type => !completedStars.includes(type));
-          
-          if (nextStarType) {
-            console.log(`[DEBUG] Incomplete STAR found: ${nextStarType}, starting MCQ...`);
-            console.log(`[DEBUG] Completed STARs: ${completedStars.join(', ') || 'none'}`);
-            
-            // 해당 STAR의 진행 상태 확인
-            const progress = starMcqProgress[nextStarType];
-            
-            setTimeout(() => {
-              if (progress?.depthSelections?.length > 0) {
-                // 이미 진행 중인 depth가 있으면 해당 상태로 복원
-                setDepthSelections(progress.depthSelections);
-                setCurrentDepth(progress.depthSelections.length + 1);
-              }
-              // MCQ 직접 시작 (fetchNextStarQuestion 호출 X)
-              handleStarMcqStart(nextStarType);
-            }, 500);
-          }
-        }
-        return;
+  // ✅ STAR 입력값 복원 (previousStarContents 우선, 없으면 starContents)
+  const starData = conversationState.previousStarContents || conversationState.starContents || {};
+  if (Object.keys(starData).length > 0) {
+    const restoredInputs = {
+      situation: starData.S || '',
+      task: starData.T || '',
+      action: starData.A || '',
+      result: starData.R || ''
+    };
+    setStarInputs(restoredInputs);
+    console.log('[DEBUG] Restored starInputs:', restoredInputs);
+    
+    // ✅ 완료된 STAR들의 displayTexts도 복원
+    const starQuestions = conversationState.regeneratedQuestion?.starQuestions || {};
+    const starKeyMap = { S: 'situation', T: 'task', A: 'action', R: 'result' };
+    const restoredDisplayTexts = {};
+    
+    Object.keys(starData).forEach(type => {
+      if (starData[type]) {
+        const key = starKeyMap[type];
+        restoredDisplayTexts[key] = {
+          line1: starQuestions[type] || '',
+          line2: ''
+        };
       }
+    });
+    
+    if (Object.keys(restoredDisplayTexts).length > 0) {
+      setStarDisplayTexts(prev => ({ ...prev, ...restoredDisplayTexts }));
+      console.log('[DEBUG] Restored displayTexts for completed STARs:', Object.keys(restoredDisplayTexts));
     }
+  }
+     
+   // ✅ 각 STAR 단계별 질문 복원 (완료된 단계 + 현재 단계)
+   if (conversationState.regeneratedQuestion?.starQuestions) {
+    const starQuestions = conversationState.regeneratedQuestion.starQuestions;
+    const currentType = conversationState.currentStarType;
+    const starOrder = ['S', 'T', 'A', 'R'];
+    const currentIndex = starOrder.indexOf(currentType);
+    
+    // 완료된 단계들 + 현재 단계까지 질문 복원
+    const questionsToRestore = [];
+    starOrder.forEach((type, index) => {
+      if (index <= currentIndex && starQuestions[type]) {
+        questionsToRestore.push({
+          sender: '딥글',
+          message: starQuestions[type],
+          hint: '',
+          starType: type
+        });
+      }
+    });
+    
+    if (questionsToRestore.length > 0) {
+      setChatHistory(prev => {
+        // 중복 방지: 이미 있는 질문은 제외
+        const existingMessages = prev.map(m => m.message);
+        const newQuestions = questionsToRestore.filter(q => !existingMessages.includes(q.message));
+        return [...prev, ...newQuestions];
+      });
+      console.log('[DEBUG] Restored STAR questions up to', currentType);
+    }
+  }
+
+    // ✅ mainQuestion을 chatHistory 마지막에 추가 (화면에 표시되는 것은 마지막 메시지)
+    const finalMainQuestion = conversationState.regeneratedQuestion?.mainQuestion 
+      || conversationState.mainQuestion;
+    if (finalMainQuestion) {
+      setChatHistory(prev => {
+        // 이미 같은 mainQuestion이 마지막에 있으면 추가하지 않음
+        if (prev.length > 0 && prev[prev.length - 1].message === finalMainQuestion) {
+          return prev;
+        }
+        return [...prev, { 
+          sender: '딥글', 
+          message: finalMainQuestion, 
+          hint: conversationState.lastHint || '',
+          isMainQuestion: true 
+        }];
+      });
+      console.log('[DEBUG] Added mainQuestion as last message:', finalMainQuestion.substring(0, 50) + '...');
+    }
+        
+    // ✅ inputFields 복원 (완료된 STAR + 현재 STAR 모두 포함)
+    const currentType = conversationState.currentStarType || 'S';
+    const starOrder = ['S', 'T', 'A', 'R'];
+    const currentIndex = starOrder.indexOf(currentType);
+    const starQuestions = conversationState.regeneratedQuestion?.starQuestions || {};
+    const starKeyMap = { S: 'situation', T: 'task', A: 'action', R: 'result' };
+    const labelMap = { S: 'S (상황)', T: 'T (과제)', A: 'A (행동)', R: 'R (결과)' };
+    
+    // 완료된 STAR + 현재 STAR까지 inputFields 생성
+    const allInputFields = [];
+    starOrder.forEach((type, index) => {
+      if (index <= currentIndex) {
+        allInputFields.push({
+          key: starKeyMap[type],
+          label: labelMap[type],
+          placeholder: {
+            line1: starQuestions[type] || '',
+            line2: ''
+          }
+        });
+      }
+    });
+    
+    if (allInputFields.length > 0) {
+      setInputFields(allInputFields);
+      setInputMode('star');
+      
+      // ✅ displayTexts도 함께 설정 (완료된 STAR + 현재 STAR)
+      const allDisplayTexts = {};
+      allInputFields.forEach(field => {
+        allDisplayTexts[field.key] = {
+          line1: field.placeholder?.line1 || '',
+          line2: field.placeholder?.line2 || ''
+        };
+      });
+      setStarDisplayTexts(prev => ({ ...prev, ...allDisplayTexts }));
+      
+      console.log('[DEBUG] Restored inputFields for:', allInputFields.map(f => f.key));
+      console.log('[DEBUG] Restored displayTexts for all fields:', Object.keys(allDisplayTexts));
+    }
+      
+     // ✅ STAR 완료 여부 체크
+     if (conversationState.starMcqCompleted) {
+      setCurrentStarStep('DONE');
+      console.log('[DEBUG] STAR already completed');
+      return;
+    }
+    
+    return;
+  }
+}
+
+// 질문 생성 API 직접 호출...
+    
   
     // 질문 생성 API 직접 호출 (새로 시작하거나 저장된 질문 없을 때)
     setTimeout(async () => {
@@ -2372,9 +2674,16 @@ coreCompetency: coreCompetency || ''
 
 // flow=reused-episode 처리 (재활용 에피소드 - Q&A 스킵)
 if (flow === 'reused-episode' && projectId && questionId) {
+  resetSessionState();
   const savedData = localStorage.getItem('deepgl_reused_episode');
   if (savedData) {
     const parsedData = JSON.parse(savedData);
+    // 문항 ID 불일치 시 무시 (이전 문항 잔여 데이터 방지)
+    if (parsedData.questionId && parsedData.questionId !== questionId) {
+      console.log('[DEBUG] localStorage 문항 불일치 - 무시:', parsedData.questionId, '!==', questionId);
+      localStorage.removeItem('deepgl_reused_episode');
+      return;
+    }
     const { episode, companyInfo, talentProfile, coreCompetency, analysisId, resumeId, questionText } = parsedData;
     
     console.log('[DEBUG] Reused episode loaded:', episode);
@@ -2415,7 +2724,7 @@ if (flow === 'reused-episode' && projectId && questionId) {
 
   // flow=restore 처리 (에피소드/계획서/자소서 복원)
   if (flow === 'restore' && projectId && questionId) {
-    const savedData = localStorage.getItem('deepgl_selected_experience');
+    resetSessionState();    const savedData = localStorage.getItem('deepgl_selected_experience');
     if (savedData) {
       const parsedData = JSON.parse(savedData);
       const { resumeId, analysisId, selectedExperiences, questionTopics, companyInfo, restoreStatus, episodeData, planData, coverLetterData } = parsedData;
@@ -3250,24 +3559,45 @@ if (inputMode === 'star' && currentStarStep !== 'DONE') {
   return;
 }
     
-    // 텍스트 모드: 기존 로직 (메인 질문 버블 페이드아웃)
-    const currentBubble = document.querySelector('.focus-question-bubble');
-    if (currentBubble) {
-      currentBubble.style.animation = 'slideOutToRight 0.6s ease-in-out forwards';
-    }
-    
-    setTimeout(async () => {
-      setIsSubmitting(false);
-      
-      const currentStep = questionCount;
-      
-      // 입력 리셋
-      setCurrentAnswer('');
-      
-      // 질문 생성
-      handleGenerateQuestion(userAnswer, currentStep + 1);
-    }, 800);
-  };
+ // Phase 2 텍스트 제출: 에피소드 생성으로 직행
+ if (currentPhaseNumber === 2) {
+  setIsSubmitting(false);
+  const currentTopic = state.questionTopics[currentExperienceStep - 1] || '경험';
+  
+  // chatHistory에 사용자 답변 추가
+  setChatHistory(prev => [...prev, { sender: '나', message: userAnswer }]);
+  setCurrentAnswer('');
+  
+  typewriterEffect(`자, 이제 ${currentTopic} 구체화가 끝났습니다. 에피소드를 생성하겠습니다.`, () => {
+    setChatHistory(prev => [...prev, {
+      sender: '딥글',
+      message: `자, 이제 ${currentTopic} 구체화가 끝났습니다. 에피소드를 생성하겠습니다.`
+    }]);
+    setTimeout(() => {
+      handleSummarizeEpisodes();
+    }, 1500);
+  });
+  return;
+}
+
+// 텍스트 모드: 기존 로직 (메인 질문 버블 페이드아웃)
+const currentBubble = document.querySelector('.focus-question-bubble');
+if (currentBubble) {
+  currentBubble.style.animation = 'slideOutToRight 0.6s ease-in-out forwards';
+}
+
+setTimeout(async () => {
+  setIsSubmitting(false);
+  
+  const currentStep = questionCount;
+  
+  // 입력 리셋
+  setCurrentAnswer('');
+  
+  // 질문 생성
+  handleGenerateQuestion(userAnswer, currentStep + 1);
+}, 800);
+};
   // ✅ 수정: handleSummarizeEpisodes
 
 
@@ -6133,8 +6463,8 @@ return (
              gap: '8px',
              marginBottom: '8px'
            }}>
-     {['S', 'T', 'A', 'R'].map((type) => {
-               const fieldKeyMap = { 'S': 'situation', 'T': 'task', 'A': 'action', 'R': 'result' };
+{starMcqType !== 'PHASE2' && ['S', 'T', 'A', 'R'].map((type) => {
+                 const fieldKeyMap = { 'S': 'situation', 'T': 'task', 'A': 'action', 'R': 'result' };
                const hasValue = starInputs[fieldKeyMap[type]]?.trim();
                return (
                  <div
@@ -6187,29 +6517,178 @@ return (
         {currentDepth}단계 심화 중
       </div>
     )}
-    <h2 style={{
-      fontSize: '18px',
-      fontWeight: '600',
-      color: '#1D1D1F',
-      marginBottom: '12px',
-      lineHeight: '1.6'
-    }}>
-      {starMcqLoading 
-        ? `[${starMcqType}] 질문을 준비하고 있습니다...`
-        : `[${starMcqType}] ${starMcqQuestion || '질문을 불러오는 중...'}`
-      }
-    </h2>
-    {/* 누적 요약 표시 (선택) */}
-    {!starMcqLoading && contextSummary && (
-      <p style={{
-        fontSize: '13px',
-        color: '#6B7280',
-        marginBottom: '16px',
-        fontStyle: 'italic'
+ {/* 💬 이전 맥락 (contextSummary) */}
+ {!starMcqLoading && contextSummary && (
+      <div style={{
+        padding: '12px 16px',
+        background: 'rgba(107, 114, 128, 0.08)',
+        borderRadius: '12px',
+        marginBottom: '12px'
       }}>
-        {contextSummary}
-      </p>
+        <p style={{
+          fontSize: '13px',
+          color: '#6B7280',
+          margin: 0,
+          lineHeight: '1.5'
+        }}>
+          💬 {contextSummary}
+        </p>
+      </div>
     )}
+    {/* 💡 이 질문의 목적 (purpose) */}
+    {!starMcqLoading && starMcqPurpose && (
+      <div style={{
+        padding: '12px 16px',
+        background: 'rgba(59, 130, 246, 0.08)',
+        borderRadius: '12px',
+        marginBottom: '12px'
+      }}>
+        <p style={{
+          fontSize: '13px',
+          color: '#3B82F6',
+          margin: 0,
+          lineHeight: '1.5'
+        }}>
+          💡 {starMcqPurpose}
+        </p>
+      </div>
+    )}
+  {/* ❓ 현재 질문 (question) - 편집 가능 */}
+  <div style={{
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'center',
+      gap: '8px',
+      marginBottom: '12px'
+    }}>
+      {starMcqLoading || regeneratingOptions ? (
+        <h2 style={{
+          fontSize: '18px',
+          fontWeight: '600',
+          color: '#1D1D1F',
+          lineHeight: '1.6',
+          margin: 0
+        }}>
+          {regeneratingOptions 
+            ? `[${starMcqType}] 새로운 선택지를 생성하고 있습니다...`
+            : `[${starMcqType}] 질문을 준비하고 있습니다...`
+          }
+        </h2>
+      ) : editingStarQuestion ? (
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '12px', 
+          width: '100%',
+          maxWidth: '500px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ 
+              fontSize: '18px', 
+              fontWeight: '600', 
+              color: '#1D1D1F' 
+            }}>
+              [{starMcqType}]
+            </span>
+          </div>
+          <textarea
+            value={editedStarQuestionText}
+            onChange={(e) => setEditedStarQuestionText(e.target.value)}
+            autoFocus
+            style={{
+              width: '100%',
+              minHeight: '80px',
+              fontSize: '16px',
+              fontWeight: '500',
+              color: '#1D1D1F',
+              lineHeight: '1.6',
+              padding: '12px 16px',
+              border: '2px solid #3B82F6',
+              borderRadius: '12px',
+              outline: 'none',
+              background: 'white',
+              resize: 'vertical'
+            }}
+            placeholder="질문을 수정하세요..."
+          />
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => {
+                setEditingStarQuestion(false);
+                setEditedStarQuestionText('');
+              }}
+              style={{
+                padding: '8px 16px',
+                background: 'transparent',
+                border: '1px solid rgba(107, 114, 128, 0.3)',
+                borderRadius: '8px',
+                fontSize: '14px',
+                color: '#6B7280',
+                cursor: 'pointer'
+              }}
+            >
+              취소
+            </button>
+            <button
+              onClick={handleRegenerateStarMcqOptions}
+              style={{
+                padding: '8px 16px',
+                background: '#3B82F6',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: 'white',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M23 4v6h-6M1 20v-6h6" />
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+              </svg>
+              보기 재생성
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <h2 style={{
+            fontSize: '18px',
+            fontWeight: '600',
+            color: '#1D1D1F',
+            lineHeight: '1.6',
+            margin: 0
+          }}>
+            {`[${starMcqType}] ${starMcqQuestion || '질문을 불러오는 중...'}`}
+          </h2>
+          {/* 질문 수정 연필 아이콘 */}
+          <div
+            onClick={() => {
+              setEditingStarQuestion(true);
+              setEditedStarQuestionText(starMcqQuestion);
+            }}
+            style={{
+              padding: '6px',
+              cursor: 'pointer',
+              opacity: 0.5,
+              transition: 'opacity 0.2s ease',
+              flexShrink: 0
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = 0.5}
+            title="질문 수정하기"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+          </div>
+        </>
+      )}
+    </div>
   </div>
 
            {/* 로딩 상태 */}
@@ -6594,7 +7073,7 @@ return (
                     }}
                   >
      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={{ flex: 1 }}>
+     <span style={{ flex: 1 }}>
                         {showHintInBubble && chatHistory[chatHistory.length - 1].hint
                           ? chatHistory[chatHistory.length - 1].hint
                           : chatHistory[chatHistory.length - 1].message}
@@ -6756,7 +7235,7 @@ return (
                             fontWeight: '600',
                             color: 'rgba(74, 85, 104, 0.9)'
                           }}>
-질문 {questionCount} / 4                   
+질문 {questionCount} / 2
        </span>
                         </div>
 
@@ -6856,8 +7335,8 @@ return (
                         </button>
                       </div>
                       
-                      {/* STAR 모드 전환 버튼 (inputFields가 있을 때만) */}
-                      {inputFields && (
+                {/* STAR 모드 전환 버튼 (Phase 1 + inputFields가 있을 때만) */}
+                {inputFields && currentPhaseNumber < 2 && (
                         <button
                           onClick={() => setInputMode('star')}
                           style={{
@@ -6874,6 +7353,32 @@ return (
                         >
                           STAR 구조로 입력하기
                         </button>
+                      )}
+                      {/* Phase 2: 객관식 전환 버튼 */}
+                      {currentPhaseNumber === 2 && (
+                        <button
+                          onClick={() => {
+                            setStarMcqSelections([]);
+                            handleStarMcqStart('PHASE2');
+                          }}
+                          style={{
+                            padding: '10px 16px',
+                            fontSize: '15px',
+                            color: '#86868B',
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            transition: 'color 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => e.target.style.color = '#1D1D1F'}
+                          onMouseLeave={(e) => e.target.style.color = '#86868B'}
+                        >
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+                            <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v0M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" />
+                            <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+                          </svg>
+                          객관식으로 입력하기
+                                                  </button>
                       )}
                     </>
                   )}
@@ -6906,7 +7411,7 @@ return (
       fontWeight: '600',
       color: 'rgba(74, 85, 104, 0.9)'
     }}>
-질문 {questionCount} / 4
+질문 {questionCount} / 2
     </span>
   </div>
 )}
@@ -6942,12 +7447,103 @@ return (
           <h2>완성된 에피소드 확인</h2>
           <p className="description-text">딥글이 구체화한 경험을 요약했습니다. 확인하고 다음 단계로 넘어가세요.</p>
           <div className="card-grid">
-            {state.summarizedEpisodes.length > 0 ? (
+          {state.summarizedEpisodes.length > 0 ? (
               state.summarizedEpisodes.map((ep, index) => (
                 <div key={index} className="card episode-card">
-                  <p className="card-title">{ep.topic}</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <p className="card-title" style={{ margin: 0 }}>{ep.topic}</p>
+                    {editingEpisodeIndex !== index && (
+                      <div
+                        onClick={() => {
+                          setEditingEpisodeIndex(index);
+                          setEditedEpisodeText(ep.episode);
+                        }}
+                        style={{
+                          padding: '6px',
+                          cursor: 'pointer',
+                          opacity: 0.5,
+                          transition: 'opacity 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                        onMouseLeave={(e) => e.currentTarget.style.opacity = 0.5}
+                        title="에피소드 수정하기"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
                   <div className="episode-content">
-                    <p>{ep.episode}</p>
+                    {editingEpisodeIndex === index ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <textarea
+                          value={editedEpisodeText}
+                          onChange={(e) => setEditedEpisodeText(e.target.value)}
+                          style={{
+                            width: '100%',
+                            minHeight: '200px',
+                            fontSize: '14px',
+                            lineHeight: '1.6',
+                            padding: '12px',
+                            border: '2px solid #3B82F6',
+                            borderRadius: '8px',
+                            outline: 'none',
+                            resize: 'vertical',
+                            fontFamily: 'inherit'
+                          }}
+                        />
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={() => {
+                              setEditingEpisodeIndex(null);
+                              setEditedEpisodeText('');
+                            }}
+                            disabled={savingEpisode}
+                            style={{
+                              padding: '8px 16px',
+                              background: 'transparent',
+                              border: '1px solid rgba(107, 114, 128, 0.3)',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                              color: '#6B7280',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            취소
+                          </button>
+                          <button
+                            onClick={() => handleUpdateEpisode(index)}
+                            disabled={savingEpisode}
+                            style={{
+                              padding: '8px 16px',
+                              background: savingEpisode ? '#9CA3AF' : '#3B82F6',
+                              border: 'none',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              color: 'white',
+                              cursor: savingEpisode ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            {savingEpisode ? (
+                              <>
+                                <div className="loading-spinner" style={{ width: '14px', height: '14px' }} />
+                                저장 중...
+                              </>
+                            ) : (
+                              '수정 완료'
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p>{ep.episode}</p>
+                    )}
                   </div>
                 </div>
               ))
@@ -7831,7 +8427,8 @@ const DeepglFlow = ({ project, question, onBack }) => {
                 companyName: project.company,
                 selectedChains: selectedChains,
                 globalStrategy: globalStrategy,
-                targetCompany: project.company
+                targetCompany: project.company,
+                questionChains: reuseInfo.questionChains || {}
               });
               setScreen('reuse-selection');
               return;
@@ -7992,7 +8589,7 @@ const DeepglFlow = ({ project, question, onBack }) => {
             userId,
             projectId: project.id,
             questionId: question.id,
-            selectedChains: reuseData.selectedChains,
+            episodeId: reuseData.selectedEpisode?.episodeId || reuseData.questionChains?.[question.id]?.selectedEpisode?.episodeId,
             globalStrategy: reuseData.globalStrategy,
             jobPosting: {
               company: project.company,

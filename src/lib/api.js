@@ -1,5 +1,5 @@
 // src/lib/api.js
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 // ============================================
 // 공통 API 호출 함수

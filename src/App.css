@@ -1460,7 +1460,7 @@ progress::-webkit-progress-value {
   }
 }
 
-/* Accessibility Improvements */
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1472,16 +1472,9 @@ progress::-webkit-progress-value {
   }
 }
 
-/* Utility Classes */
-.fade-out {
-  opacity: 0.3;
-  pointer-events: none;
-}
 
-.glass-heavy {
-  backdrop-filter: blur(var(--blur-heavy)) !important;
-  -webkit-backdrop-filter: blur(var(--blur-heavy)) !important;
-}
+/* Accessibility Improvements */
+
 
 .glass-extra {
   backdrop-filter: blur(var(--blur-extra)) !important;
