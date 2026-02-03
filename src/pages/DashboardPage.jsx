@@ -334,12 +334,18 @@ if (step === 2) {
       justifyContent: 'center',
       zIndex: 9999
     }}>
-      <div style={{
+  <div style={{
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         gap: '24px'
       }}>
+        <p style={{
+          color: '#1F2937',
+          fontSize: '20px',
+          fontWeight: '700',
+          margin: 0
+        }}>약 5~10분 소요됩니다</p>
         <div style={{
           position: 'relative',
           width: '80px',
