@@ -71,8 +71,8 @@ const DatabasePage = () => {
       </aside>
       <main className="dashboard-main">
         <div className="dashboard-header">
-          <h1>My DeepGL Database</h1>
-          <p className="dashboard-subtitle">자기소개서와 에피소드를 관리하세요</p>
+        <h1>My <span translate="no">DeepGL</span> Database</h1>
+                  <p className="dashboard-subtitle">자기소개서와 에피소드를 관리하세요</p>
         </div>
 
         {error && (

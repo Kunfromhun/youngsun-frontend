@@ -452,6 +452,7 @@ const IntroAnimation = ({ onComplete }) => {
      
       {/* DEEPGL 텍스트 박스 */}
       <div
+        translate="no"
         style={{
           position: 'absolute',
           top: 'calc(100% - 60px)',

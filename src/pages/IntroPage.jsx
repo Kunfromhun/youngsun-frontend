@@ -278,6 +278,7 @@ const IntroPage = () => {
       
       {/* DEEPGL 텍스트 */}
       <div
+        translate="no"
         style={{
           position: 'absolute',
           top: 'calc(50% + 140px)',
