@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// BrainCrossLogo 컴포넌트
 const BrainCrossLogo = ({ size = 200, showCross = true }) => (
   <svg width={size} height={size} viewBox="0 0 200 200">
     <defs>
@@ -33,10 +32,15 @@ const IntroPage = () => {
     const completeTimer = setTimeout(() => {
       setAnimationComplete(true);
     }, 6000);
+
+    const safetyTimer = setTimeout(() => {
+      setAnimationComplete(true);
+    }, 8000);
     
     return () => {
       clearTimeout(startTimer);
       clearTimeout(completeTimer);
+      clearTimeout(safetyTimer);
     };
   }, []);
 
@@ -64,61 +68,53 @@ const IntroPage = () => {
           0% { transform: translate(-50%, -50%) translateX(-400px) rotate(-720deg); opacity: 0; }
           100% { transform: translate(-50%, -50%) translateX(0) rotate(0deg); opacity: 1; }
         }
-        
         @keyframes rollFromRight {
           0% { transform: translate(-50%, -50%) translateX(400px) rotate(720deg); opacity: 0; }
           100% { transform: translate(-50%, -50%) translateX(0) rotate(0deg); opacity: 1; }
         }
-        
         @keyframes fastSpin {
           0% { transform: translate(-50%, -50%) rotate(0deg); opacity: 1; }
           100% { transform: translate(-50%, -50%) rotate(3600deg); opacity: 1; }
         }
-        
         @keyframes hideElement {
           to { opacity: 0; visibility: hidden; }
         }
-        
         @keyframes fadeIn {
           to { opacity: 1; }
         }
-        
         @keyframes letterFadeIn {
           0% { opacity: 0; transform: translateY(20px) scale(0.8); }
           100% { opacity: 1; transform: translateY(0) scale(1); }
         }
-        
         @keyframes slideUp {
           0% { opacity: 0; transform: translateY(30px); }
           100% { opacity: 1; transform: translateY(0); }
         }
-        
         @keyframes glow {
           0%, 100% { filter: drop-shadow(0 0 20px rgba(107, 114, 128, 0.3)); }
           50% { filter: drop-shadow(0 0 30px rgba(107, 114, 128, 0.5)); }
         }
-        
-        .circle-element {
-          opacity: 0;
-          ${animationStarted ? 'animation: rollFromLeft 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.5s forwards, hideElement 0.2s ease 2.5s forwards;' : ''}
+
+        .circle-element { opacity: 0; }
+        .circle-element.active {
+          animation: rollFromLeft 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.5s forwards, hideElement 0.2s ease 2.5s forwards;
         }
-        
-        .cross-element {
-          opacity: 0;
-          ${animationStarted ? 'animation: rollFromRight 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.5s forwards, hideElement 0.2s ease 2.5s forwards;' : ''}
+
+        .cross-element { opacity: 0; }
+        .cross-element.active {
+          animation: rollFromRight 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.5s forwards, hideElement 0.2s ease 2.5s forwards;
         }
-        
-        .cross-combined {
-          opacity: 0;
-          ${animationStarted ? 'animation: fadeIn 0.2s ease 2.5s forwards, fastSpin 3s cubic-bezier(0.25, 0.8, 0.8, 1) 3s forwards, hideElement 0.3s ease 6s forwards;' : ''}
+
+        .cross-combined { opacity: 0; }
+        .cross-combined.active {
+          animation: fadeIn 0.2s ease 2.5s forwards, fastSpin 3s cubic-bezier(0.25, 0.8, 0.8, 1) 3s forwards, hideElement 0.3s ease 6s forwards;
         }
-        
-        .final-logo {
-          opacity: 0;
-          cursor: pointer;
-          ${animationStarted ? 'animation: fadeIn 0.5s ease 6s forwards, glow 2s ease-in-out 6.5s infinite;' : ''}
+
+        .final-logo { opacity: 0; cursor: pointer; }
+        .final-logo.active {
+          animation: fadeIn 0.5s ease 6s forwards, glow 2s ease-in-out 6.5s infinite;
         }
-        
+
         .deepgl-letter {
           opacity: 0;
           display: inline-block;
@@ -129,17 +125,16 @@ const IntroPage = () => {
           -webkit-text-fill-color: transparent;
           z-index: 10;
         }
-        
-        .deepgl-letter-1 { ${animationStarted ? 'animation: letterFadeIn 0.4s ease 5.2s forwards;' : ''} }
-        .deepgl-letter-2 { ${animationStarted ? 'animation: letterFadeIn 0.4s ease 5.4s forwards;' : ''} }
-        .deepgl-letter-3 { ${animationStarted ? 'animation: letterFadeIn 0.4s ease 5.6s forwards;' : ''} }
-        .deepgl-letter-4 { ${animationStarted ? 'animation: letterFadeIn 0.4s ease 5.8s forwards;' : ''} }
-        .deepgl-letter-5 { ${animationStarted ? 'animation: letterFadeIn 0.4s ease 6.0s forwards;' : ''} }
-        .deepgl-letter-6 { ${animationStarted ? 'animation: letterFadeIn 0.4s ease 6.2s forwards;' : ''} }
-        
-        .start-hint {
-          opacity: 0;
-          ${animationStarted ? 'animation: slideUp 0.6s ease 6.5s forwards;' : ''}
+        .deepgl-letter-1.active { animation: letterFadeIn 0.4s ease 5.2s forwards; }
+        .deepgl-letter-2.active { animation: letterFadeIn 0.4s ease 5.4s forwards; }
+        .deepgl-letter-3.active { animation: letterFadeIn 0.4s ease 5.6s forwards; }
+        .deepgl-letter-4.active { animation: letterFadeIn 0.4s ease 5.8s forwards; }
+        .deepgl-letter-5.active { animation: letterFadeIn 0.4s ease 6.0s forwards; }
+        .deepgl-letter-6.active { animation: letterFadeIn 0.4s ease 6.2s forwards; }
+
+        .start-hint { opacity: 0; }
+        .start-hint.active {
+          animation: slideUp 0.6s ease 6.5s forwards;
         }
 
         @keyframes softPulse {
@@ -162,13 +157,7 @@ const IntroPage = () => {
           height: 220px;
           pointer-events: none;
           border-radius: 9999px;
-          background: radial-gradient(
-            circle,
-            rgba(0,0,0,0) 58%,
-            rgba(107,114,128,0.28) 60%,
-            rgba(107,114,128,0.18) 70%,
-            rgba(0,0,0,0) 75%
-          );
+          background: radial-gradient(circle, rgba(0,0,0,0) 58%, rgba(107,114,128,0.28) 60%, rgba(107,114,128,0.18) 70%, rgba(0,0,0,0) 75%);
           opacity: 0;
           animation: softPulse 3.6s ease-out infinite;
         }
@@ -183,13 +172,7 @@ const IntroPage = () => {
           height: 220px;
           pointer-events: none;
           border-radius: 9999px;
-          background: radial-gradient(
-            circle,
-            rgba(0,0,0,0) 62%,
-            rgba(107,114,128,0.22) 64%,
-            rgba(107,114,128,0.12) 74%,
-            rgba(0,0,0,0) 79%
-          );
+          background: radial-gradient(circle, rgba(0,0,0,0) 62%, rgba(107,114,128,0.22) 64%, rgba(107,114,128,0.12) 74%, rgba(0,0,0,0) 79%);
           opacity: 0;
           animation: softPulse 3.6s ease-out infinite;
           animation-delay: 1.8s;
@@ -200,9 +183,8 @@ const IntroPage = () => {
         }
       `}</style>
       
-      {/* 왼쪽에서 굴러오는 원 */}
       <svg
-        className="circle-element"
+        className={`circle-element${animationStarted ? ' active' : ''}`}
         width="200"
         height="200"
         viewBox="0 0 200 200"
@@ -221,9 +203,8 @@ const IntroPage = () => {
         />
       </svg>
       
-      {/* 오른쪽에서 굴러오는 십자가 */}
       <svg
-        className="cross-element"
+        className={`cross-element${animationStarted ? ' active' : ''}`}
         width="200"
         height="200"
         viewBox="0 0 200 200"
@@ -238,9 +219,8 @@ const IntroPage = () => {
         <rect x="40" y="92" width="120" height="16" fill="rgba(74, 85, 104, 0.8)" rx="8"/>
       </svg>
       
-      {/* 합체된 십자가 (빠른 회전용) */}
       <div
-        className="cross-combined"
+        className={`cross-combined${animationStarted ? ' active' : ''}`}
         style={{
           position: 'absolute',
           left: '50%',
@@ -262,9 +242,8 @@ const IntroPage = () => {
         </svg>
       </div>
       
-      {/* 최종 로고 (클릭 가능) */}
       <div
-        className="final-logo"
+        className={`final-logo${animationStarted ? ' active' : ''}`}
         onClick={handleLogoClick}
         style={{
           position: 'absolute',
@@ -276,7 +255,6 @@ const IntroPage = () => {
         <BrainCrossLogo size={200} showCross={true} />
       </div>
       
-      {/* DEEPGL 텍스트 */}
       <div
         translate="no"
         style={{
@@ -297,15 +275,14 @@ const IntroPage = () => {
         {['D','E','E','P','G','L'].map((letter, i) => (
           <span
             key={i}
-            className={`deepgl-letter deepgl-letter-${i + 1}`}
+            className={`deepgl-letter deepgl-letter-${i + 1}${animationStarted ? ' active' : ''}`}
           >
             {letter}
           </span>
         ))}
       </div>
 
-      {/* 클릭 힌트 */}
-      <p className="start-hint" style={{
+      <p className={`start-hint${animationStarted ? ' active' : ''}`} style={{
         position: 'absolute',
         bottom: '80px',
         color: '#86868B',
