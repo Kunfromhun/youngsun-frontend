@@ -3912,7 +3912,9 @@ setTimeout(async () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           paragraphs: state.coverLetterParagraphs,
-          plan: state.plan
+          plan: state.plan,
+          projectId: currentProjectId,
+          questionId: currentQuestionId
         }),
         signal: controller.signal
       });
