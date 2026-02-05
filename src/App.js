@@ -6970,17 +6970,16 @@ return (
                        }
                      }
                    }}
-                   disabled={selectedStarOptionId === null}
-                   style={{
+                   disabled={selectedStarOptionId === null || currentDepth >= 3}
+                                      style={{
                      padding: '12px 24px',
-                     background: selectedStarOptionId !== null ? 'rgba(59, 130, 246, 0.9)' : 'rgba(107, 114, 128, 0.3)',
-                     border: 'none',
+                     background: (selectedStarOptionId !== null && currentDepth < 3) ? 'rgba(59, 130, 246, 0.9)' : 'rgba(107, 114, 128, 0.3)',                     border: 'none',
                      borderRadius: '12px',
                      fontSize: '14px',
                      fontWeight: '600',
                      color: 'white',
-                     cursor: selectedStarOptionId !== null ? 'pointer' : 'not-allowed',
-                     transition: 'all 0.2s ease'
+                     cursor: (selectedStarOptionId !== null && currentDepth < 3) ? 'pointer' : 'not-allowed',
+                                          transition: 'all 0.2s ease'
                    }}
                    onMouseEnter={(e) => {
                      if (selectedStarOptionId !== null) {
