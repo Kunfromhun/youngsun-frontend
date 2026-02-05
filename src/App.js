@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import DashboardPage from './pages/DashboardPage';
 import IntroPage from './pages/IntroPage';
+import LandingPage from './pages/LandingPage';
 import MyPage from './pages/MyPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import DatabasePage from './pages/DatabasePage';
@@ -5463,22 +5464,23 @@ if (screen === 'start' || screen === 'loading' || screen === 'direction-selectio
   }
   return (
     <Routes>
-      <Route path="/signup" element={isAuthenticated ? <Navigate to="/intro" replace /> : <SignupPage />} />
-      <Route path="/login" element={isAuthenticated ? <Navigate to="/intro" replace /> : <LoginPage onLoginSuccess={() => {}} />} />
-      <Route path="/intro" element={!isAuthenticated ? <Navigate to="/login" replace /> : <IntroPage />} />
-      <Route path="/dashboard" element={!isAuthenticated ? <Navigate to="/login" replace /> : <DashboardPage />} />
-      <Route path="/search" element={!isAuthenticated ? <Navigate to="/login" replace /> : <SearchPage />} />    
-        <Route path="/mypage" element={!isAuthenticated ? <Navigate to="/login" replace /> : <MyPage />} />
-      <Route path="/project/:projectId" element={!isAuthenticated ? <Navigate to="/login" replace /> : <ProjectDetailPage />} />
-      <Route path="/database" element={!isAuthenticated ? <Navigate to="/login" replace /> : <DatabasePage />} />
-      <Route path="/database/:companyName" element={!isAuthenticated ? <Navigate to="/login" replace /> : <CompanyFolderPage />} />
-      <Route path="/database/:companyName/episodes" element={!isAuthenticated ? <Navigate to="/login" replace /> : <EpisodeListPage />} />    
-      <Route path="/database/:companyName/cover-letters" element={!isAuthenticated ? <Navigate to="/login" replace /> : <CoverLetterListPage />} />
-      <Route path="/database/:companyName/episodes/:episodeId" element={!isAuthenticated ? <Navigate to="/login" replace /> : <EpisodeDetailPage />} />
-      <Route path="/database/:companyName/cover-letters/:coverLetterId" element={!isAuthenticated ? <Navigate to="/login" replace /> : <CoverLetterDetailPage />} />        
-       <Route path="/project/:projectId/question/:questionId" element={!isAuthenticated ? <Navigate to="/login" replace /> : <DeepglFlowWrapper />} />      
-         <Route path="*" element={<Navigate to={isAuthenticated ? "/intro" : "/login"} replace />} />
-    </Routes>
+    <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
+    <Route path="/signup" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <SignupPage />} />
+    <Route path="/login" element={<LoginPage onLoginSuccess={() => navigate('/dashboard')} />} />
+          <Route path="/intro" element={!isAuthenticated ? <Navigate to="/login" replace /> : <IntroPage />} />
+    <Route path="/dashboard" element={!isAuthenticated ? <Navigate to="/login" replace /> : <DashboardPage />} />
+    <Route path="/search" element={!isAuthenticated ? <Navigate to="/login" replace /> : <SearchPage />} />    
+      <Route path="/mypage" element={!isAuthenticated ? <Navigate to="/login" replace /> : <MyPage />} />
+    <Route path="/project/:projectId" element={!isAuthenticated ? <Navigate to="/login" replace /> : <ProjectDetailPage />} />
+    <Route path="/database" element={!isAuthenticated ? <Navigate to="/login" replace /> : <DatabasePage />} />
+    <Route path="/database/:companyName" element={!isAuthenticated ? <Navigate to="/login" replace /> : <CompanyFolderPage />} />
+    <Route path="/database/:companyName/episodes" element={!isAuthenticated ? <Navigate to="/login" replace /> : <EpisodeListPage />} />    
+    <Route path="/database/:companyName/cover-letters" element={!isAuthenticated ? <Navigate to="/login" replace /> : <CoverLetterListPage />} />
+    <Route path="/database/:companyName/episodes/:episodeId" element={!isAuthenticated ? <Navigate to="/login" replace /> : <EpisodeDetailPage />} />
+    <Route path="/database/:companyName/cover-letters/:coverLetterId" element={!isAuthenticated ? <Navigate to="/login" replace /> : <CoverLetterDetailPage />} />        
+     <Route path="/project/:projectId/question/:questionId" element={!isAuthenticated ? <Navigate to="/login" replace /> : <DeepglFlowWrapper />} />      
+       <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />} />
+  </Routes>
   );
 }
 
