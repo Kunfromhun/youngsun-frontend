@@ -17,6 +17,8 @@ const EpisodeDetailPage = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState('');
 
   useEffect(() => {
     const loadEpisode = async () => {
@@ -43,7 +45,25 @@ const EpisodeDetailPage = () => {
 
     loadEpisode();
   }, [userId, episodeId]);
-
+  const handleTitleSave = async () => {
+    if (!editedTitle.trim()) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/user-database/episode/${episodeId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, title: editedTitle.trim() })
+      });
+      if (response.ok) {
+        setEpisode(prev => ({ ...prev, title: editedTitle.trim() }));
+        setEditingTitle(false);
+        setSuccessMessage('제목이 변경되었습니다.');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      }
+    } catch (err) {
+      console.error('제목 변경 실패:', err);
+      setError('제목 변경에 실패했습니다.');
+    }
+  };
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -207,9 +227,41 @@ const EpisodeDetailPage = () => {
           <div className="project-card" style={{ padding: '24px' }}>
             {/* 메타 정보 */}
             <div style={{ marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1D1D1F', marginBottom: '12px' }}>
-              {episode.title || episode.topic || '제목 없음'}          
+            {editingTitle ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                  <input
+                    type="text"
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleTitleSave(); if (e.key === 'Escape') setEditingTitle(false); }}
+                    autoFocus
+                    style={{
+                      flex: 1, fontSize: '20px', fontWeight: '600', color: '#1D1D1F',
+                      padding: '4px 8px', border: '2px solid #3B82F6', borderRadius: '8px', outline: 'none'
+                    }}
+                  />
+                  <button onClick={handleTitleSave} style={{ padding: '6px 12px', background: '#3B82F6', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: 'white', cursor: 'pointer' }}>저장</button>
+                  <button onClick={() => setEditingTitle(false)} style={{ padding: '6px 12px', background: 'rgba(107,114,128,0.1)', border: 'none', borderRadius: '8px', fontSize: '13px', color: '#6B7280', cursor: 'pointer' }}>취소</button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                  <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1D1D1F', margin: 0 }}>
+                    {episode.title || episode.topic || '제목 없음'}
                   </h2>
+                  <div
+                    onClick={() => { setEditingTitle(true); setEditedTitle(episode.title || episode.topic || ''); }}
+                    style={{ padding: '4px', cursor: 'pointer', opacity: 0.5, transition: 'opacity 0.2s' }}
+                    onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                    onMouseLeave={(e) => e.currentTarget.style.opacity = 0.5}
+                    title="제목 수정"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                  </div>
+                </div>
+              )}
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {episode.talentProfile && (
                   <span style={{
