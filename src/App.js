@@ -2826,6 +2826,21 @@ if (flow === 'reused-episode' && projectId && questionId) {
       } else if (status === 'plan') {
         setScreen('plan-view');
       } else if (status === 'letter' || status === 'done') {
+        // reviewData가 있으면 첨삭 완료 상태로 복원
+        if (parsedData.reviewData && parsedData.reviewData.paragraphs) {
+          const reviewParagraphs = parsedData.reviewData.paragraphs.map(p => ({
+            id: p.id,
+            text: p.edited || p.text || '',
+            originalCharCount: p.originalCharCount,
+            editedCharCount: p.editedCharCount,
+            editInstructions: p.editInstructions || []
+          }));
+          dispatch({
+            type: 'SET_COVER_LETTER',
+            paragraphs: reviewParagraphs
+          });
+          setIsProofreadingComplete(true);
+        }
         setScreen('cover-letter-view');
       }
       
@@ -6737,8 +6752,8 @@ return (
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
               </svg>
           </div>
-          {/* 질문 재생성 새로고침 아이콘 */}
-          <div
+                 {/* 질문 재생성 새로고침 아이콘 (S는 제외) */}
+                 {starMcqType !== 'S' && <div
             onClick={handleRegenerateStarQuestion}
             style={{
               padding: '6px',
@@ -6756,8 +6771,8 @@ return (
               <path d="M1 20v-6h6" />
               <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
             </svg>
-          </div>
-        </>
+            </div>}
+            </>
       )}
     </div>
   </div>
@@ -8568,7 +8583,8 @@ const DeepglFlow = ({ project, question, onBack }) => {
               restoreStatus: status,
               episodeData: stateData.episodeData,
               planData: stateData.planData,
-              coverLetterData: stateData.coverLetterData
+              coverLetterData: stateData.coverLetterData,
+              reviewData: stateData.reviewData
             }));
             navigate(`/?flow=restore&projectId=${project.id}&questionId=${question.id}&status=${status}`);
             return;
