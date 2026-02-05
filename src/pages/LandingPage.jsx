@@ -569,7 +569,7 @@ const LandingPage = () => {
           color: var(--text-4); margin-bottom: 0;
         }
 
-        /* RESPONSIVE */
+   /* RESPONSIVE */
         @media (max-width: 768px) {
           .lp-section { padding: 100px 24px; }
           .lp-pipeline { padding: 100px 24px; }
@@ -580,11 +580,19 @@ const LandingPage = () => {
           .lp-pipeline-label { font-size: 11px; }
           .lp-qna-layout { flex-direction: column; gap: 48px; }
           .lp-qna-text { flex: none; width: 100%; }
-          .lp-qna-mockup { max-width: 100%; min-height: 380px; }
+          .lp-qna-mockup { max-width: 100%; min-height: 480px; }
+          .lp-mockup-panel { position: relative; display: none; padding: 20px; border-radius: 16px; }
+          .lp-mockup-panel.lp-active { display: block; opacity: 1; transform: none; pointer-events: auto; }
           .lp-mock-split-cards { flex-direction: column; }
+          .lp-mock-question { font-size: 14px; }
+          .lp-mock-question-sm { font-size: 13px; }
+          .lp-mock-choice { font-size: 12px; padding: 12px 14px; }
+          .lp-mock-card-text { font-size: 12px; }
+          .lp-mock-input-area { font-size: 11px; min-height: 50px; }
           .lp-db-layout { flex-direction: column-reverse; gap: 48px; }
           .lp-db-mockup { max-width: 100%; }
           .lp-db-mock-grid { flex-direction: column; }
+          .lp-login-btn { top: 16px; right: 16px; padding: 6px 14px; font-size: 13px; }
         }
       `}</style>
 
