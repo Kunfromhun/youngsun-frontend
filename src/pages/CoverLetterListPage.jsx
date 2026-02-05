@@ -370,7 +370,7 @@ const CoverLetterListPage = () => {
                   WebkitLineClamp: 2,
                   WebkitBoxOrient: 'vertical'
                 }}>
-                  {coverLetter.content?.substring(0, 100) || '내용 없음'}...
+{(coverLetter.content || coverLetter.content_text || coverLetter.contentText || '').substring(0, 100) || '내용 없음'}...
                 </p>
                 <p style={{ marginTop: '8px', fontSize: '12px', color: '#86868B' }}>
                   {coverLetter.createdAt ? new Date(coverLetter.createdAt).toLocaleDateString() : ''}

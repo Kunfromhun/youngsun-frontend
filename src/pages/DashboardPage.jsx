@@ -470,18 +470,6 @@ return (
         </div>
 
         <div className="input-group">
-          <label>채용공고 원문 (선택)</label>
-          <textarea
-            name="jobPostingRaw"
-            className="input-field textarea-field"
-            value={formData.jobPostingRaw}
-            onChange={handleChange}
-            placeholder="채용공고 전체를 복사해서 붙여넣기 하세요"
-            rows={4}
-          />
-        </div>
-
-        <div className="input-group">
           <label>이력서 선택</label>
           <select
             name="resumeId"

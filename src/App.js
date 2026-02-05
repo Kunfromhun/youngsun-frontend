@@ -5408,7 +5408,59 @@ if (authLoading) {
     </div>
   );
 }
+// 모바일 감지
+const isMobile = /iPhone|Android.*Mobile|iPod/.test(navigator.userAgent) && !/iPad/.test(navigator.userAgent);
+
 if (screen === 'start' || screen === 'loading' || screen === 'direction-selection') {
+  // 모바일이고 로그인된 상태면 차단 메시지
+  if (isMobile && isAuthenticated) {
+    return (
+      <div style={{
+        width: '100%',
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#FBFBFD',
+        padding: '24px',
+        textAlign: 'center'
+      }}>
+        <svg width="80" height="80" viewBox="0 0 200 200" style={{ marginBottom: '24px' }}>
+          <defs>
+            <linearGradient id="mobileBlockGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#9CA3AF" stopOpacity="0.3"/>
+              <stop offset="100%" stopColor="#6B7280" stopOpacity="0.3"/>
+            </linearGradient>
+          </defs>
+          <circle cx="100" cy="100" r="80" fill="url(#mobileBlockGradient)" stroke="rgba(107, 114, 128, 0.5)" strokeWidth="2"/>
+          <rect x="92" y="40" width="16" height="120" fill="rgba(74, 85, 104, 0.8)" rx="8"/>
+          <rect x="40" y="92" width="120" height="16" fill="rgba(74, 85, 104, 0.8)" rx="8"/>
+        </svg>
+        <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#1D1D1F', marginBottom: '12px' }}>
+          PC 또는 태블릿에서 이용해주세요
+        </h2>
+        <p style={{ fontSize: '15px', color: '#86868B', lineHeight: '1.6', marginBottom: '24px' }}>
+          DeepGL은 PC나 태블릿 PC에서만 이용 가능합니다.
+        </p>
+        <button
+          onClick={() => { localStorage.clear(); window.location.href = '/login'; }}
+          style={{
+            padding: '12px 24px',
+            background: 'rgba(74, 85, 104, 0.9)',
+            border: 'none',
+            borderRadius: '12px',
+            fontSize: '15px',
+            fontWeight: '600',
+            color: 'white',
+            cursor: 'pointer'
+          }}
+        >
+          로그아웃
+        </button>
+      </div>
+    );
+  }
   return (
     <Routes>
       <Route path="/signup" element={isAuthenticated ? <Navigate to="/intro" replace /> : <SignupPage />} />
