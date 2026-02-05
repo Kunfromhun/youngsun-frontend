@@ -66,26 +66,7 @@
   --easing-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background-color: #000000;
-    --surface-color: #1c1c1e;
-    --text-primary: #ffffff;
-    --text-secondary: #98989d;
-    --text-tertiary: #636366;
-    --light-gray: #2c2c2e;
-    --gray: #48484a;
-    --dark-gray: #6d6d70;
-    --glass-bg: rgba(28, 28, 30, 0.7);
-    --glass-bg-hover: rgba(28, 28, 30, 0.8);
-    --glass-bg-active: rgba(28, 28, 30, 0.85);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --glass-border-hover: rgba(255, 255, 255, 0.2);
-    --shadow-hover: 0 12px 28px rgba(255, 255, 255, 0.05);
-  }
-}
-
+/* Dark mode disabled - force light mode */
 /* Global Styles */
 * {
   box-sizing: border-box;
