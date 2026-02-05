@@ -1203,6 +1203,7 @@ const [starMcqPurpose, setStarMcqPurpose] = useState(''); // 질문 목적 (객�
 const [editingStarQuestion, setEditingStarQuestion] = useState(false); // 질문 편집 모드
 const [editedStarQuestionText, setEditedStarQuestionText] = useState(''); // 편집 중인 질문 텍스트
 const [regeneratingOptions, setRegeneratingOptions] = useState(false); // 보기 재생성 로딩
+const [rejectedQuestions, setRejectedQuestions] = useState([]); // 질문 재생성 시 거부된 질문 누적
 // 에피소드 수정 관련 state
 const [editingEpisodeIndex, setEditingEpisodeIndex] = useState(null); // 수정 중인 에피소드 인덱스
 const [editedEpisodeText, setEditedEpisodeText] = useState(''); // 수정 중인 에피소드 텍스트
@@ -1929,8 +1930,53 @@ const handleStarMcqRefresh = () => {
   setStarMcqQuestion('다른 선택지를 준비하고 있습니다...');
   fetchNextDepthQuestion(starMcqType, depthSelections);
 };
+// STAR 객관식 질문 자체 재생성
+const handleRegenerateStarQuestion = async () => {
+  const currentQ = starMcqQuestion;
+  const updatedRejected = [...rejectedQuestions, currentQ];
+  setRejectedQuestions(updatedRejected);
+  setStarMcqLoading(true);
+  setStarMcqOptions([]);
+  setStarMcqQuestion('다른 질문을 준비하고 있습니다...');
 
+  try {
+    const previousStarContents = {};
+    if (starInputs.situation?.trim()) previousStarContents.S = starInputs.situation;
+    if (starInputs.task?.trim()) previousStarContents.T = starInputs.task;
+    if (starInputs.action?.trim()) previousStarContents.A = starInputs.action;
+    if (starInputs.result?.trim()) previousStarContents.R = starInputs.result;
+
+    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/regenerate-star-question`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        projectId: currentProjectId,
+        questionId: currentQuestionId,
+        starType: starMcqType,
+        rejectedQuestions: updatedRejected,
+        depthSelections: depthSelections,
+        previousStarContents: previousStarContents
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      setStarMcqQuestion(data.question);
+      setStarMcqOptions(data.options || []);
+    } else {
+      console.error('질문 재생성 실패:', data.error);
+      setStarMcqQuestion(currentQ);
+    }
+  } catch (error) {
+    console.error('질문 재생성 API 호출 실패:', error);
+    setStarMcqQuestion(currentQ);
+  } finally {
+    setStarMcqLoading(false);
+  }
+};
 // STAR 객관식 취소 (원래 화면으로)
+
 const handleStarMcqCancel = () => {
   setShowStarMcq(false);
   setStarMcqType('');
@@ -1940,7 +1986,9 @@ const handleStarMcqCancel = () => {
 
   setCurrentDepth(1);
   setContextSummary('');
-  setStarMcqPurpose('');};
+  setStarMcqPurpose('');
+  setRejectedQuestions([]);
+};
 
   // STAR 질문 수정 후 보기 재생성
   const handleRegenerateStarMcqOptions = async () => {
@@ -6687,6 +6735,26 @@ return (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+          </div>
+          {/* 질문 재생성 새로고침 아이콘 */}
+          <div
+            onClick={handleRegenerateStarQuestion}
+            style={{
+              padding: '6px',
+              cursor: 'pointer',
+              opacity: 0.5,
+              transition: 'opacity 0.2s ease',
+              flexShrink: 0
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = 0.5}
+            title="다른 질문으로 변경"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 4v6h-6" />
+              <path d="M1 20v-6h6" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
             </svg>
           </div>
         </>
