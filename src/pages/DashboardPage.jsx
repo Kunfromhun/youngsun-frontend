@@ -246,11 +246,24 @@ const DashboardPage = () => {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <button
+                onClick={() => {
+                  membershipApi.recordInquiry(userId).catch(() => {});
+                  alert('멤버십 문의가 접수되었습니다. 빠르게 연락드리겠습니다.');
+                }}
+                style={{
+                  display: 'block', width: '100%', padding: '14px 20px', borderRadius: '12px',
+                  background: '#1D1D1F', color: '#fff', fontSize: '14px',
+                  fontWeight: 600, border: 'none', cursor: 'pointer'
+                }}
+              >
+                Becoming a Member
+              </button>
+              <button
                 onClick={() => setShowRateLimitModal(false)}
                 style={{
                   padding: '14px 20px', borderRadius: '12px',
-                  background: '#1D1D1F', color: '#fff', fontSize: '14px',
-                  fontWeight: 600, border: 'none', cursor: 'pointer'
+                  background: 'transparent', border: '1px solid rgba(0,0,0,0.08)',
+                  color: '#6E6E73', fontSize: '14px', fontWeight: 500, cursor: 'pointer'
                 }}
               >
                 닫기
