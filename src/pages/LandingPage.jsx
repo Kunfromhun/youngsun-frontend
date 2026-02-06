@@ -15,12 +15,12 @@ const LandingPage = () => {
   const [currentGenPanel, setCurrentGenPanel] = useState('panel-plan');
 
   const genData = [
-    { target: 'panel-plan', text: '계획도 알아서,' },
-    { target: 'panel-write', text: '작성도 알아서,' },
-    { target: 'panel-edit', text: '첨삭도 알아서.' },
+    { target: 'panel-plan', text: '계획도 딥글이,' },
+    { target: 'panel-write', text: '작성도 딥글이,' },
+    { target: 'panel-edit', text: '첨삭도 딥글이.' },
   ];
   const genCaptions = {
-    'panel-plan': '초기분석의 데이터와 세션별로 진행했던 에피소드를 기반으로, 딥글은 자소서의 문단별 생성 계획서를 고안합니다.',
+    'panel-plan': '초기분석의 데이터와 세션별로 진행했던 에피소드를 기반으로, 딥글은 자소서의 문단별 생성 계획서를 기획합니다.',
     'panel-write': '계획서를 바탕으로 자소서가 문단별로 생성됩니다. 문단을 클릭하여 직접 수정할 수 있습니다.',
     'panel-edit': '첨삭을 통해 가독성을 높이고 내용을 강화합니다. 완료 후 원본과 비교하며 직접 수정할 수 있습니다.',
   };
@@ -37,7 +37,7 @@ const LandingPage = () => {
   ];
 
   const qnaCaptions = {
-    'mockup-split': '메인질문은 STAR 형태로 4번에 걸쳐 나눠 답변할 수 있습니다. 선택된 답변들은 딥글이 알맞게 합성하며, 입력창에서 자유롭게 수정할 수 있습니다.',
+    'mockup-split': '메인 질문은 STAR 구조에 따라 네 단계로 나뉘어 답변할 수 있습니다. 딥글은 선택된 답변을 바탕으로 질문에 대한 하나의 답변을 생성하고, 사용자는 입력창에서 이를 자유롭게 다듬을 수 있습니다.',
     'mockup-choice': '객관식으로 진행할 수 있어 막막할 때도 쉽게 답변할 수 있습니다. 선택지들을 딥글이 분석하여 줄글로된 답변으로 생성합니다.',
     'mockup-edit': '질문이나 선택지에 미세한 오류가 있다면 직접 수정할 수 있습니다. 질문과 보기 자체를 교체하고 싶다면 재생성하여 자신에게 맞는 질문을 찾아갈 수 있고, 입력창에 딥글이 생성한 줄글의 답변도 수정할 수 있습니다.',
     'mockup-refresh': ' 메인 질문이 어렵게 느껴질 경우, 질문을 다시 생성해 상황을 새로 설정할 수 있습니다. 이에 맞춰 모든 STAR 질문도 함께 재구성되며, 이러한 재생성 기능은 횟수 제한 없이 사용할 수 있습니다. 사용자는 부담 없이 질문을 조정하며 자신에게 가장 적합한 결과를 찾아갈 수 있습니다.',
@@ -155,7 +155,6 @@ const LandingPage = () => {
       if (genIntervalRef.current) clearInterval(genIntervalRef.current);
     };
   }, [switchGenPanel]);
-
   const EditAnimationText = ({ isActive }) => {
     const oldText = '팀원별 업무 진척도';
     const newText = '학생별 프로젝트 진행률';
@@ -193,15 +192,19 @@ const LandingPage = () => {
       }
     }, [phase, deleteCount, typeCount, oldText.length, newText.length]);
 
+    const cursor = <span className="lp-mock-edit-cursor">|</span>;
+
     if (phase === 'idle') {
-      return <span>{oldText}</span>;
+      return <span>{oldText}{cursor}</span>;
     }
     if (phase === 'deleting') {
-      return <span>{oldText.slice(0, oldText.length - deleteCount)}</span>;
+      return <span>{oldText.slice(0, oldText.length - deleteCount)}{cursor}</span>;
     }
-    return <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{newText.slice(0, typeCount)}</span>;
+    if (phase === 'done') {
+      return <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{newText}</span>;
+    }
+    return <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{newText.slice(0, typeCount)}{cursor}</span>;
   };
-
   // 자동번역 차단 + 다크모드 차단
   useEffect(() => {
     const html = document.documentElement;
@@ -985,7 +988,7 @@ const LandingPage = () => {
             ))}
           </div>
           <p className="lp-reveal lp-d3" style={{ fontSize: '14px', color: 'rgba(255,255,255,0.35)', maxWidth: '560px', textAlign: 'center', lineHeight: 1.8, wordBreak: 'keep-all' }}>
-            딥글은 자기소개서 작성을 위해 기업과 채용공고를 분석하고, 사용자의 경험을 지원 회사와 연결하기 위한 다각도의 분석을 진행합니다. 이를 바탕으로 문답이 이어지며, 문답을 기반으로 생성된 에피소드를 기준으로 계획서와 자기소개서가 완성됩니다. 사용자는 채용공고를 입력하고 질문에 답하는 것만으로 전 과정을 진행할 수 있습니다.
+            딥글은 자기소개서 작성을 위해 기업과 채용공고를 분석하고, 사용자의 경험을 지원 회사와 연결하기 위한 다각도의 분석을 진행합니다. 이를 바탕으로 문답이 이어지며, 문답을 기반으로 생성된 에피소드를 기준으로 계획서와 자기소개서가 완성됩니다. 사용자는 채용공고를 입력하고 질문에 답하는 것만으로 자소서를 생성할 수 있습니다.
           </p>
           </section>
 
@@ -1096,8 +1099,7 @@ const LandingPage = () => {
                 </div>
                 <div className="lp-mock-edit-demo">
                 <div className="lp-mock-choice lp-editing">
-                    <span className="lp-mock-edit-cursor">|</span>
-                    <EditAnimationText isActive={currentMockup === 'mockup-edit'} />
+                <EditAnimationText isActive={currentMockup === 'mockup-edit'} />
                     <span style={{ color: 'var(--text-3)' }}>을 시각화하여 병목 구간을 해소한 경험</span>
                     <span className="lp-mock-edit-icon">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
