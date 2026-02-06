@@ -147,8 +147,17 @@ const DashboardPage = () => {
           <div className="project-grid">
             <div
               className="project-card new-project-card"
-              onClick={() => setShowNewProjectModal(true)}
-            >
+              onClick={() => {
+                const recentProject = projects.find(p => {
+                  const created = new Date(p.created_at || p.createdAt);
+                  return (Date.now() - created.getTime()) < 24 * 60 * 60 * 1000;
+                });
+                if (recentProject) {
+                  setShowRateLimitModal(true);
+                } else {
+                  setShowNewProjectModal(true);
+                }
+              }}            >
               <div className="new-project-logo">
                 <svg width="80" height="80" viewBox="0 0 200 200">
                   <defs>
@@ -233,29 +242,15 @@ const DashboardPage = () => {
               일반회원은 24시간 내 프로젝트를 1개만 생성할 수 있습니다.
             </p>
             <p style={{ fontSize: '14px', color: '#6E6E73', lineHeight: 1.7, marginBottom: '24px', wordBreak: 'keep-all' }}>
-              멤버십을 희망하시면, 아래의 'Becoming a Member'를 클릭해주세요.
+              멤버십을 희망하시면 hyochanggongwon@naver.com으로 문의주세요.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              
-            <button
-            onClick={() => {
-              membershipApi.recordInquiry(userId).catch(() => {});
-              window.location.href = 'mailto:hyochanggongwon@naver.com?subject=멤버십 문의';
-                        }}
-            style={{
-              display: 'block', width: '100%', padding: '14px 20px', borderRadius: '12px',
-              background: '#1D1D1F', color: '#fff', fontSize: '14px',
-              fontWeight: 600, border: 'none', cursor: 'pointer'
-            }}
-          >
-            Becoming a Member
-          </button>
               <button
                 onClick={() => setShowRateLimitModal(false)}
                 style={{
                   padding: '14px 20px', borderRadius: '12px',
-                  background: 'transparent', border: '1px solid rgba(0,0,0,0.08)',
-                  color: '#6E6E73', fontSize: '14px', fontWeight: 500, cursor: 'pointer'
+                  background: '#1D1D1F', color: '#fff', fontSize: '14px',
+                  fontWeight: 600, border: 'none', cursor: 'pointer'
                 }}
               >
                 닫기
