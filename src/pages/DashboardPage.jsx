@@ -35,7 +35,8 @@ const DashboardPage = () => {
   const [error, setError] = useState('');
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [showRateLimitModal, setShowRateLimitModal] = useState(false);
-    const [resumes, setResumes] = useState([]);
+  const [showMembershipInfo, setShowMembershipInfo] = useState(false);
+      const [resumes, setResumes] = useState([]);
 
   const { userId, email, signOut } = useAuth();
   const navigate = useNavigate();
@@ -241,25 +242,29 @@ const DashboardPage = () => {
             <p style={{ fontSize: '14px', color: '#6E6E73', lineHeight: 1.7, marginBottom: '8px', wordBreak: 'keep-all' }}>
               일반회원은 24시간 내 프로젝트를 1개만 생성할 수 있습니다.
             </p>
-            <p style={{ fontSize: '14px', color: '#6E6E73', lineHeight: 1.7, marginBottom: '24px', wordBreak: 'keep-all' }}>
-              멤버십을 희망하시면 hyochanggongwon@naver.com으로 문의주세요.
-            </p>
+            {showMembershipInfo && (
+              <p style={{ fontSize: '14px', color: '#6E6E73', lineHeight: 1.7, marginBottom: '24px', wordBreak: 'keep-all' }}>
+                멤버십을 희망하시면 hyochanggongwon@naver.com으로 문의주세요.
+              </p>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {!showMembershipInfo && (
+                <button
+                  onClick={() => {
+                    membershipApi.recordInquiry(userId).catch(() => {});
+                    setShowMembershipInfo(true);
+                  }}
+                  style={{
+                    display: 'block', width: '100%', padding: '14px 20px', borderRadius: '12px',
+                    background: '#1D1D1F', color: '#fff', fontSize: '14px',
+                    fontWeight: 600, border: 'none', cursor: 'pointer'
+                  }}
+                >
+                  Becoming a Member
+                </button>
+              )}
               <button
-                onClick={() => {
-                  membershipApi.recordInquiry(userId).catch(() => {});
-                  alert('멤버십 문의가 접수되었습니다. 빠르게 연락드리겠습니다.');
-                }}
-                style={{
-                  display: 'block', width: '100%', padding: '14px 20px', borderRadius: '12px',
-                  background: '#1D1D1F', color: '#fff', fontSize: '14px',
-                  fontWeight: 600, border: 'none', cursor: 'pointer'
-                }}
-              >
-                Becoming a Member
-              </button>
-              <button
-                onClick={() => setShowRateLimitModal(false)}
+                onClick={() => { setShowRateLimitModal(false); setShowMembershipInfo(false); }}
                 style={{
                   padding: '14px 20px', borderRadius: '12px',
                   background: 'transparent', border: '1px solid rgba(0,0,0,0.08)',
