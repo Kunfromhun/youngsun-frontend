@@ -9,7 +9,26 @@ const LandingPage = () => {
   const [currentMockup, setCurrentMockup] = useState('mockup-split');
   const [activeLineIndex, setActiveLineIndex] = useState(0);
   const [dbLit, setDbLit] = useState([false, false, false, false]);
+  const genSectionRef = useRef(null);
+  const genIntervalRef = useRef(null);
+  const [activeGenIndex, setActiveGenIndex] = useState(0);
+  const [currentGenPanel, setCurrentGenPanel] = useState('panel-plan');
 
+  const genData = [
+    { target: 'panel-plan', text: '계획도 알아서,' },
+    { target: 'panel-write', text: '작성도 알아서,' },
+    { target: 'panel-edit', text: '첨삭도 알아서.' },
+  ];
+  const genCaptions = {
+    'panel-plan': '초기분석의 데이터와 세션별로 진행했던 에피소드를 기반으로, 딥글은 자소서의 문단별 생성 계획서를 고안합니다.',
+    'panel-write': '계획서를 바탕으로 자소서가 문단별로 생성됩니다. 문단을 클릭하여 직접 수정할 수 있습니다.',
+    'panel-edit': '첨삭을 통해 가독성을 높이고 내용을 강화합니다. 완료 후 원본과 비교하며 직접 수정할 수 있습니다.',
+  };
+
+  const switchGenPanel = useCallback((targetId, index) => {
+    setCurrentGenPanel(targetId);
+    setActiveGenIndex(index);
+  }, []);
   const qnaData = [
     { target: 'mockup-split', text: '답변도 나눠서 편하게,' },
     { target: 'mockup-choice', text: '객관식으로 더 편하게,' },
@@ -19,9 +38,9 @@ const LandingPage = () => {
 
   const qnaCaptions = {
     'mockup-split': '메인질문은 STAR 형태로 4번에 걸쳐 나눠 답변할 수 있습니다. 선택된 답변들은 딥글이 알맞게 합성하며, 입력창에서 자유롭게 수정할 수 있습니다.',
-    'mockup-choice': '객관식으로 진행할 수 있어 막막할 때도 쉽게 답변할 수 있습니다. 선택지들을 딥글이 자동으로 합성해 하나의 답변으로 만들어주며, 입력창에 입력된 합성된 답변 역시 자유롭게 수정할 수 있습니다.',
-    'mockup-edit': '질문이나 선택지에 미세한 오류가 있다면 직접 수정할 수 있습니다. 질문과 보기 자체를 교체하고 싶다면 재생성하여 자신에게 맞는 질문을 찾아갈 수 있습니다.',
-    'mockup-refresh': '메인질문이 어려우면 질문을 재생성하여 상황을 재설정할 수 있습니다. 그에 맞게 모든 STAR 질문이 함께 재생성됩니다.',
+    'mockup-choice': '객관식으로 진행할 수 있어 막막할 때도 쉽게 답변할 수 있습니다. 선택지들을 딥글이 분석하여 줄글로된 답변으로 생성합니다.',
+    'mockup-edit': '질문이나 선택지에 미세한 오류가 있다면 직접 수정할 수 있습니다. 질문과 보기 자체를 교체하고 싶다면 재생성하여 자신에게 맞는 질문을 찾아갈 수 있고, 입력창에 딥글이 생성한 줄글의 답변도 수정할 수 있습니다.',
+    'mockup-refresh': ' 메인 질문이 어렵게 느껴질 경우, 질문을 다시 생성해 상황을 새로 설정할 수 있습니다. 이에 맞춰 모든 STAR 질문도 함께 재구성되며, 이러한 재생성 기능은 횟수 제한 없이 사용할 수 있습니다. 사용자는 부담 없이 질문을 조정하며 자신에게 가장 적합한 결과를 찾아갈 수 있습니다.',
   };
 
  // Scroll reveal
@@ -106,6 +125,111 @@ const LandingPage = () => {
     );
     observer.observe(dbEl);
     return () => observer.disconnect();
+  }, []);
+
+  // Generation section auto-switch
+  useEffect(() => {
+    const genEl = genSectionRef.current;
+    if (!genEl) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            let idx = 0;
+            switchGenPanel(genData[0].target, 0);
+            genIntervalRef.current = setInterval(() => {
+              idx = (idx + 1) % genData.length;
+              switchGenPanel(genData[idx].target, idx);
+            }, 4500);
+                    } else {
+            if (genIntervalRef.current) clearInterval(genIntervalRef.current);
+          }
+        });
+      },
+      { threshold: 0.3 }
+    );
+    observer.observe(genEl);
+    return () => {
+      observer.disconnect();
+      if (genIntervalRef.current) clearInterval(genIntervalRef.current);
+    };
+  }, [switchGenPanel]);
+
+  const EditAnimationText = ({ isActive }) => {
+    const oldText = '팀원별 업무 진척도';
+    const newText = '학생별 프로젝트 진행률';
+    const [phase, setPhase] = useState('idle');
+    const [deleteCount, setDeleteCount] = useState(0);
+    const [typeCount, setTypeCount] = useState(0);
+
+    useEffect(() => {
+      if (!isActive) {
+        setPhase('idle');
+        setDeleteCount(0);
+        setTypeCount(0);
+        return;
+      }
+      const startTimer = setTimeout(() => setPhase('deleting'), 800);
+      return () => clearTimeout(startTimer);
+    }, [isActive]);
+
+    useEffect(() => {
+      if (phase === 'deleting') {
+        if (deleteCount < oldText.length) {
+          const t = setTimeout(() => setDeleteCount(prev => prev + 1), 60);
+          return () => clearTimeout(t);
+        } else {
+          setPhase('typing');
+        }
+      }
+      if (phase === 'typing') {
+        if (typeCount < newText.length) {
+          const t = setTimeout(() => setTypeCount(prev => prev + 1), 50);
+          return () => clearTimeout(t);
+        } else {
+          setPhase('done');
+        }
+      }
+    }, [phase, deleteCount, typeCount, oldText.length, newText.length]);
+
+    if (phase === 'idle') {
+      return <span>{oldText}</span>;
+    }
+    if (phase === 'deleting') {
+      return <span>{oldText.slice(0, oldText.length - deleteCount)}</span>;
+    }
+    return <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{newText.slice(0, typeCount)}</span>;
+  };
+
+  // 자동번역 차단 + 다크모드 차단
+  useEffect(() => {
+    const html = document.documentElement;
+    html.setAttribute('translate', 'no');
+    html.classList.add('notranslate');
+    html.setAttribute('lang', 'ko');
+
+    // 다크모드 차단: color-scheme 강제 light
+    const meta = document.createElement('meta');
+    meta.name = 'color-scheme';
+    meta.content = 'light only';
+    document.head.appendChild(meta);
+
+    // Google Translate 차단 meta
+    const noTranslateMeta = document.createElement('meta');
+    noTranslateMeta.name = 'google';
+    noTranslateMeta.content = 'notranslate';
+    document.head.appendChild(noTranslateMeta);
+
+    document.body.style.colorScheme = 'light only';
+
+    return () => {
+      html.removeAttribute('translate');
+      html.classList.remove('notranslate');
+      document.head.removeChild(meta);
+      document.head.removeChild(noTranslateMeta);
+      document.body.style.colorScheme = '';
+    };
   }, []);
 
   return (
@@ -229,9 +353,24 @@ const LandingPage = () => {
           color: var(--text-1); margin-bottom: 0;
           opacity: 0;
           animation: lpTextUp 1s cubic-bezier(0.16,1,0.3,1) 0.7s forwards;
-          word-break: keep-all;
+      word-break: keep-all;
+          cursor: pointer; user-select: none;
         }
-
+        .lp-hero-headline .lp-headline-en,
+        .lp-hero-headline .lp-headline-ko {
+          transition: opacity 0.4s ease, transform 0.4s ease;
+          display: block; text-align: center;
+        }
+        .lp-hero-headline .lp-headline-ko {
+          position: absolute; top: 0; left: 0; right: 0;
+          opacity: 0; transform: translateY(8px);
+        }
+        .lp-hero-headline:hover .lp-headline-en {
+          opacity: 0; transform: translateY(-8px);
+        }
+        .lp-hero-headline:hover .lp-headline-ko {
+          opacity: 1; transform: translateY(0);
+        }
         .lp-login-btn {
           position: fixed;
           top: 24px;
@@ -438,7 +577,28 @@ const LandingPage = () => {
           animation: lpBlink 1s step-end infinite;
           font-weight: 300; margin-right: 1px;
         }
-        @keyframes lpBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+      @keyframes lpBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        .lp-mock-edit-text-old {
+          display: inline; position: relative;
+        }
+        .lp-mock-edit-text-old.lp-deleting span {
+          display: inline-block;
+          animation: lpCharDelete 0.06s forwards;
+          animation-fill-mode: forwards;
+        }
+        @keyframes lpCharDelete {
+          to { width: 0; overflow: hidden; opacity: 0; font-size: 0; margin: 0; padding: 0; }
+        }
+        .lp-mock-edit-text-new {
+          display: inline; color: var(--text-1); font-weight: 600;
+        }
+        .lp-mock-edit-text-new span {
+          display: inline-block; opacity: 0;
+          animation: lpCharType 0.05s forwards;
+        }
+        @keyframes lpCharType {
+          to { opacity: 1; }
+        }
         .lp-mock-edit-icon {
           position: absolute; right: 12px; top: 50%;
           transform: translateY(-50%); color: var(--text-4);
@@ -564,11 +724,150 @@ const LandingPage = () => {
         }
         .lp-footer p { font-size: 12px; color: var(--text-4); letter-spacing: 0.02em; }
 
-        .lp-section-label {
+     .lp-section-label {
           font-size: 13px; font-weight: 600; letter-spacing: 0.08em;
           color: var(--text-4); margin-bottom: 0;
         }
 
+      /* ANALYSIS */
+        .lp-analysis {
+          min-height: 100vh; padding: 120px 48px;
+          display: flex; align-items: center; justify-content: center;
+          background: var(--surface);
+        }
+        .lp-analysis-layout {
+          display: flex; flex-direction: column; align-items: center;
+          max-width: 720px; width: 100%; text-align: center;
+        }
+        .lp-analysis-mockup {
+          width: 280px; height: 280px; position: relative;
+          display: flex; align-items: center; justify-content: center;
+          margin-bottom: 48px;
+        }
+        .lp-analysis-logo {
+          width: 100px; height: 100px;
+          display: flex; align-items: center; justify-content: center;
+          position: relative; z-index: 2;
+        }
+        .lp-analysis-ring {
+          position: absolute; border-radius: 50%;
+          border: 1.5px solid rgba(107,114,128,0.15);
+          animation: analysisRotate 12s linear infinite;
+        }
+        .lp-analysis-ring-1 { width: 160px; height: 160px; }
+        .lp-analysis-ring-2 { width: 220px; height: 220px; animation-direction: reverse; animation-duration: 18s; border-color: rgba(107,114,128,0.08); }
+        .lp-analysis-ring-3 { width: 270px; height: 270px; animation-duration: 25s; border-color: rgba(107,114,128,0.04); }
+        .lp-analysis-dot {
+          position: absolute; width: 6px; height: 6px; border-radius: 50%;
+          background: rgba(107,114,128,0.4);
+        }
+        .lp-analysis-ring-1 .lp-analysis-dot:nth-child(1) { top: -3px; left: 50%; transform: translateX(-50%); }
+        .lp-analysis-ring-1 .lp-analysis-dot:nth-child(2) { bottom: -3px; left: 50%; transform: translateX(-50%); }
+        .lp-analysis-ring-2 .lp-analysis-dot:nth-child(1) { top: 20px; right: 10px; }
+        .lp-analysis-ring-2 .lp-analysis-dot:nth-child(2) { bottom: 20px; left: 10px; }
+        @keyframes analysisRotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .lp-analysis-headline {
+          font-size: clamp(22px, 3vw, 32px);
+          font-weight: 700; letter-spacing: -0.02em;
+          color: var(--text-1); margin-bottom: 8px;
+          word-break: keep-all;
+        }
+        .lp-analysis-sub {
+          font-size: 14px; color: var(--text-4); margin-bottom: 32px;
+        }
+        .lp-analysis-desc {
+          font-size: 14px; color: var(--text-3); line-height: 1.8;
+          word-break: keep-all; text-align: left; max-width: 560px;
+        }
+
+        /* GENERATION SECTION */
+       /* GENERATION */
+        .lp-generation {
+          min-height: 100vh; padding: 120px 48px;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .lp-gen-layout {
+          display: flex; align-items: center; justify-content: center;
+          gap: 60px; max-width: 1000px; width: 100%; flex-wrap: wrap;
+        }
+        .lp-gen-text { flex: 1 1 280px; min-width: 260px; }
+        .lp-gen-lines { margin-top: 24px; display: flex; flex-direction: column; gap: 0; }
+        .lp-gen-line {
+          font-size: clamp(18px, 2.5vw, 28px);
+          font-weight: 700; line-height: 1.5; letter-spacing: -0.02em;
+          color: var(--text-4); cursor: pointer;
+          padding: 12px 0; border-bottom: 1px solid var(--border);
+          transition: color 0.4s cubic-bezier(0.25,0.46,0.45,0.94);
+          word-break: keep-all;
+        }
+        .lp-gen-line:last-child { border-bottom: none; }
+        .lp-gen-line.lp-active { color: var(--text-1); }
+        .lp-gen-captions { margin-top: 20px; position: relative; min-height: 80px; }
+        .lp-gen-caption {
+          position: absolute; top: 0; left: 0; right: 0;
+          font-size: 14px; color: var(--text-3); line-height: 1.7;
+          opacity: 0; transform: translateY(8px);
+          transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+          pointer-events: none; word-break: keep-all;
+        }
+        .lp-gen-caption.lp-active {
+          opacity: 1; transform: translateY(0); pointer-events: auto;
+        }
+        .lp-gen-mockup {
+          flex: 1 1 400px; max-width: 520px; min-height: 400px; position: relative;
+        }
+        .lp-gen-panel {
+          position: absolute; top: 0; left: 0; right: 0;
+          opacity: 0; transform: translateY(16px);
+          transition: all 0.5s cubic-bezier(0.16,1,0.3,1);
+          pointer-events: none;
+          background: var(--surface); border: 1px solid var(--border);
+          border-radius: 20px; padding: 28px;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+        }
+        .lp-gen-panel.lp-active {
+          opacity: 1; transform: translateY(0); pointer-events: auto;
+        }
+        .lp-gen-mock-title {
+          font-size: 16px; font-weight: 700; color: var(--text-1); margin-bottom: 16px;
+          display: flex; align-items: center; gap: 8px;
+        }
+        .lp-gen-mock-info { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-bottom: 16px; }
+        .lp-gen-mock-info-item { font-size: 12px; color: var(--text-4); }
+        .lp-gen-mock-info-item strong { color: var(--text-2); font-weight: 600; }
+        .lp-gen-plan-row {
+          padding: 10px 14px; background: rgba(0,0,0,0.02); border-radius: 8px;
+          font-size: 13px; color: var(--text-2); font-weight: 500;
+        }
+        .lp-gen-mock-para {
+          font-size: 13px; color: var(--text-3); line-height: 1.7;
+          padding: 16px; background: rgba(0,0,0,0.015); border-radius: 10px;
+          word-break: keep-all;
+        }
+        .lp-gen-mock-para-label {
+          font-size: 11px; font-weight: 600; color: var(--text-4); margin-bottom: 8px;
+        }
+        .lp-gen-compare { width: 100%; display: flex; gap: 12px; }
+        .lp-gen-compare-side {
+          flex: 1; background: var(--surface);
+          border: 1px solid var(--border); border-radius: 12px; padding: 18px;
+        }
+        .lp-gen-compare-side.lp-edited {
+          border-color: rgba(59,130,246,0.3); box-shadow: 0 0 0 1px rgba(59,130,246,0.1);
+        }
+        .lp-gen-compare-label {
+          font-size: 12px; font-weight: 700; color: var(--text-3); margin-bottom: 10px;
+        }
+        .lp-gen-compare-text {
+          font-size: 12px; color: var(--text-3); line-height: 1.7; word-break: keep-all;
+        }
+        .lp-gen-compare-text .lp-added {
+          background: rgba(59,130,246,0.08); color: rgba(59,130,246,0.8);
+          font-weight: 600;
+        }
    /* RESPONSIVE */
         @media (max-width: 768px) {
           .lp-section { padding: 100px 24px; }
@@ -592,7 +891,17 @@ const LandingPage = () => {
           .lp-db-layout { flex-direction: column-reverse; gap: 48px; }
           .lp-db-mockup { max-width: 100%; }
           .lp-db-mock-grid { flex-direction: column; }
-          .lp-login-btn { top: 16px; right: 16px; padding: 6px 14px; font-size: 13px; }
+       .lp-login-btn { top: 16px; right: 16px; padding: 6px 14px; font-size: 13px; }
+.lp-analysis { padding: 100px 24px; }
+          .lp-analysis-mockup { width: 200px; height: 200px; margin-bottom: 36px; }
+          .lp-analysis-logo { width: 70px; height: 70px; }
+          .lp-analysis-ring-1 { width: 120px; height: 120px; }
+          .lp-analysis-ring-2 { width: 160px; height: 160px; }
+          .lp-analysis-ring-3 { width: 195px; height: 195px; }
+          .lp-gen-layout { flex-direction: column; gap: 48px; }          .lp-gen-mockup { max-width: 100%; min-height: auto; }
+          .lp-gen-panel { position: relative; display: none; }
+          .lp-gen-panel.lp-active { display: block; opacity: 1; transform: none; pointer-events: auto; }
+          .lp-gen-compare { flex-direction: column; }
         }
       `}</style>
 
@@ -618,13 +927,11 @@ const LandingPage = () => {
             <div className="lp-pulse-ring lp-pulse-ring-2"></div>
             <div className="lp-pulse-ring lp-pulse-ring-3"></div>
           </div>
-          <div className="lp-hero-brand" translate="no">
-            {['D','E','E','P','G','L'].map((l, i) => (
-              <span key={i} className="lp-hero-letter">{l}</span>
-            ))}
-          </div>
-          <h1 className="lp-hero-headline" translate="no">Cover Letters,<br/>Democratized.</h1>
-
+      
+          <h1 className="lp-hero-headline" style={{ position: 'relative' }}>
+            <span className="lp-headline-en" translate="no">Cover Letters,<br/>Democratized.</span>
+            <span className="lp-headline-ko">자기소개서,<br/>모두의 것이 되다.</span>
+          </h1>
 {/* 로그인 버튼 */}
 <button
   className="lp-login-btn"
@@ -648,8 +955,10 @@ const LandingPage = () => {
 
         {/* PIPELINE */}
         <section className="lp-section lp-pipeline">
-          <h2 className="lp-pipeline-headline lp-reveal">당신의 경험, 재구성되다.</h2>
-          <div className="lp-pipeline-flow lp-reveal lp-d2">
+        <p className="lp-reveal" style={{ fontSize: 'clamp(22px, 3vw, 36px)', fontWeight: 800, color: 'rgba(255,255,255,0.85)', letterSpacing: '-0.02em', textAlign: 'center', marginBottom: '72px', lineHeight: 1.4 }}>
+            입력은 최소한,<br/>분석은 최대한.
+          </p>
+          <div className="lp-pipeline-flow lp-reveal lp-d2" style={{ marginBottom: '72px' }}>
             {[
               { label: '채용공고 입력', icon: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></> },
               { label: '문답', icon: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/> },
@@ -675,14 +984,40 @@ const LandingPage = () => {
               </React.Fragment>
             ))}
           </div>
-          <p className="lp-pipeline-desc lp-reveal lp-d3">
-            회사별로 강조해야하는 것,<br/>
-            문항별로 강조해야하는 것,<br/>
-            딥글이 알아서 모두 해주는 것.
+          <p className="lp-reveal lp-d3" style={{ fontSize: '14px', color: 'rgba(255,255,255,0.35)', maxWidth: '560px', textAlign: 'center', lineHeight: 1.8, wordBreak: 'keep-all' }}>
+            딥글은 자기소개서 작성을 위해 기업과 채용공고를 분석하고, 사용자의 경험을 지원 회사와 연결하기 위한 다각도의 분석을 진행합니다. 이를 바탕으로 문답이 이어지며, 문답을 기반으로 생성된 에피소드를 기준으로 계획서와 자기소개서가 완성됩니다. 사용자는 채용공고를 입력하고 질문에 답하는 것만으로 전 과정을 진행할 수 있습니다.
           </p>
-        </section>
+          </section>
 
-        {/* QNA */}
+{/* ANALYSIS */}
+<section className="lp-section lp-analysis">
+  <div className="lp-analysis-layout">
+    <div className="lp-analysis-mockup lp-reveal">
+      <div className="lp-analysis-logo">
+        <svg width="60" height="60" viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="80" fill="rgba(156,163,175,0.15)" stroke="rgba(107,114,128,0.3)" strokeWidth="3" />
+          <rect x="92" y="40" width="16" height="120" fill="rgba(74,85,104,0.7)" rx="8" />
+          <rect x="40" y="92" width="120" height="16" fill="rgba(74,85,104,0.7)" rx="8" />
+        </svg>
+      </div>
+      <div className="lp-analysis-ring lp-analysis-ring-1">
+        <span className="lp-analysis-dot"></span>
+        <span className="lp-analysis-dot"></span>
+      </div>
+      <div className="lp-analysis-ring lp-analysis-ring-2">
+        <span className="lp-analysis-dot"></span>
+        <span className="lp-analysis-dot"></span>
+      </div>
+      <div className="lp-analysis-ring lp-analysis-ring-3"></div>
+    </div>
+    <p className="lp-section-label lp-reveal lp-d1" translate="no">DeepGL Analysis</p>
+    <h2 className="lp-analysis-headline lp-reveal lp-d2">딥글,<br/>당신의 이야기를 탐색 중.</h2>
+    <p className="lp-analysis-sub lp-reveal lp-d3">약 5~10분 소요됩니다</p>
+    <p className="lp-analysis-desc lp-reveal lp-d4">딥글은 채용공고를 기준으로 자기소개서 전 문항에서 공통적으로 드러나야 할 역량과 인재상을 먼저 추출합니다. 이후 사용자의 이력서에 기재된 경험을 하나씩 분석해, 각 경험이 자소서의 주제와 공통 역량·인재상, 그리고 회사와 얼마나 잘 연결되는지를 점수화합니다. 이 점수를 바탕으로 자소서 활용도가 가장 높은 상위 두 개의 경험 카드를 생성합니다. 각 경험 카드에는 사용자의 경험을 자소서에 활용 가능한 에피소드로 구성하기 위한 논리 구조와 방향성이 담겨 있습니다. 사용자는 선택한 경험 카드를 기준으로 문답 형식의 질문에 답하며 경험을 구체화해 나가게 됩니다.</p>
+  </div>
+</section>
+
+{/* QNA */}
         <section className="lp-section lp-qna" ref={qnaSectionRef}>
           <div className="lp-qna-layout">
             <div className="lp-qna-text">
@@ -760,8 +1095,10 @@ const LandingPage = () => {
                   <p className="lp-mock-question-sm">질문이나 보기를 자유롭게 수정하세요</p>
                 </div>
                 <div className="lp-mock-edit-demo">
-                  <div className="lp-mock-choice lp-editing">
-                    <span className="lp-mock-edit-cursor">|</span>팀원별 업무 진척도를 시각화하여 병목 구간을 해소한 경험
+                <div className="lp-mock-choice lp-editing">
+                    <span className="lp-mock-edit-cursor">|</span>
+                    <EditAnimationText isActive={currentMockup === 'mockup-edit'} />
+                    <span style={{ color: 'var(--text-3)' }}>을 시각화하여 병목 구간을 해소한 경험</span>
                     <span className="lp-mock-edit-icon">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     </span>
@@ -837,21 +1174,114 @@ const LandingPage = () => {
             <p className="lp-section-label" style={{ color: 'rgba(255,255,255,0.4)' }} translate="no">DeepGL Database</p>
                           <div className="lp-db-lines">
                 {[
-                  '자동으로 데이터베이스에 저장되고,',
-                  '자동으로 데이터베이스에서 분석하고,',
-                  '자동으로 다른 자소서를 작성할 때 사용되고,',
-                  '자동으로 사용할수록 강력해지고.',
+                  '저장하고,',
+                  '분석되며,',
+                  '재구성되어,',
+                  '강력해지는.',
                 ].map((text, i) => (
 <p key={i} className={`lp-db-line${dbLit[i] ? ' lp-lit' : ''}`}>{text}</p>
                 ))}
               </div>
-              <p className="lp-db-desc lp-reveal lp-d5">딥글 세션을 진행하면서 생성되는 자소서와 에피소드는 모두 회사별 경험으로 데이터베이스에 저장되며, 동시에 분석됩니다. 추후 다른 자소서를 생성할 때 딥글이 경험을 재구성할 수 있는 제안서를 생성하며, 사용자가 동의할 경우 문답을 건너뛰고 바로 에피소드를 생성할 수 있습니다.</p>
+              <p className="lp-db-desc lp-reveal lp-d5">딥글 세션을 진행하며 생성되는 자기소개서와 에피소드는 모두 회사별 경험 데이터로 저장되고, 동시에 딥글의 내부 알고리즘을 통해 분석됩니다. 이후 다른 자기소개서를 작성할 때, 딥글은 저장된 경험 중 재구성이 가능한 유사도 높은 경험을 선별해 에피소드 재구성 제안서를 제공합니다. 사용자가 이에 동의하면, 별도의 문답 과정 없이 해당 경험을 기반으로 즉시 에피소드 생성이 가능합니다.</p>
             </div>
           </div>
-        </section>
+          </section>
 
-        {/* FINAL */}
-        <section className="lp-section lp-final">
+{/* GENERATION */}
+<section className="lp-section lp-generation" ref={genSectionRef}>
+  <div className="lp-gen-layout">
+    <div className="lp-gen-text">
+      <p className="lp-section-label" translate="no">DeepGL Generation</p>
+      <div className="lp-gen-lines">
+        {genData.map((item, i) => (
+          <p
+            key={i}
+            className={`lp-gen-line${activeGenIndex === i ? ' lp-active' : ''}`}
+            onClick={() => {
+              if (genIntervalRef.current) clearInterval(genIntervalRef.current);
+              switchGenPanel(item.target, i);
+            }}
+          >
+            {item.text}
+          </p>
+        ))}
+      </div>
+      <div className="lp-gen-captions">
+        {Object.entries(genCaptions).map(([key, text]) => (
+          <p key={key} className={`lp-gen-caption${currentGenPanel === key ? ' lp-active' : ''}`}>
+            {text}
+          </p>
+        ))}
+      </div>
+    </div>
+
+    <div className="lp-gen-mockup lp-reveal lp-d2">
+      {/* 패널 1: 계획서 */}
+      <div className={`lp-gen-panel${currentGenPanel === 'panel-plan' ? ' lp-active' : ''}`}>
+        <p className="lp-gen-mock-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+          자소서 계획서
+        </p>
+        <div className="lp-gen-mock-info">
+          <span className="lp-gen-mock-info-item"><strong>글로벌테크</strong> · 데이터분석</span>
+          <span className="lp-gen-mock-info-item">주제: 지원동기</span>
+          <span className="lp-gen-mock-info-item">800자</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {[
+            '1문단 (지원동기를 데이터 활용 경험과 연결하여 두괄식 제시)',
+            '2문단 (프로젝트 경험과 직무 역량의 구체적 연결)',
+            '3문단 (회사 비전과 본인 성장 방향의 일치)',
+          ].map((text, i) => (
+            <div key={i} className="lp-gen-plan-row">{text}</div>
+          ))}
+        </div>
+      </div>
+
+      {/* 패널 2: 자소서 */}
+      <div className={`lp-gen-panel${currentGenPanel === 'panel-write' ? ' lp-active' : ''}`}>
+        <p className="lp-gen-mock-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          생성된 자소서
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className="lp-gen-mock-para">
+            <p className="lp-gen-mock-para-label">문단 1</p>
+            글로벌테크 데이터분석 직무에 지원하게 된 계기는 프로젝트 매니저로서 일정 지연 문제를 데이터 기반으로 해결하며 느낀 분석의 힘 때문입니다.
+          </div>
+          <div className="lp-gen-mock-para">
+            <p className="lp-gen-mock-para-label">문단 2</p>
+            팀 프로젝트에서 진행률 데이터를 시각화하고 병목 구간을 식별하여 일정을 2주 단축한 경험은, 데이터가 의사결정의 핵심 도구가 될 수 있음을 체감하게 해주었습니다.
+          </div>
+          <div className="lp-gen-mock-para">
+            <p className="lp-gen-mock-para-label">문단 3</p>
+            글로벌테크가 추구하는 데이터 기반 혁신 문화 속에서, 현장의 문제를 분석으로 풀어내는 인재로 성장하고 싶습니다.
+          </div>
+        </div>
+      </div>
+
+      {/* 패널 3: 첨삭 */}
+      <div className={`lp-gen-panel${currentGenPanel === 'panel-edit' ? ' lp-active' : ''}`}>
+        <p className="lp-gen-mock-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          문단 수정
+        </p>
+        <div className="lp-gen-compare">
+          <div className="lp-gen-compare-side">
+            <p className="lp-gen-compare-label">원본 문단</p>
+            <p className="lp-gen-compare-text">진행률 데이터를 시각화하고 병목 구간을 식별하여 일정을 단축한 경험은, 데이터가 의사결정의 도구가 될 수 있음을 체감하게 해주었습니다.</p>
+          </div>
+          <div className="lp-gen-compare-side lp-edited">
+            <p className="lp-gen-compare-label">수정 문단</p>
+            <p className="lp-gen-compare-text">진행률 데이터를 시각화하고 병목 구간을 식별하여 일정을 <span className="lp-added">2주 단축한</span> 경험은, 데이터가 의사결정의 <span className="lp-added">핵심</span> 도구가 될 수 있음을 체감하게 해주었습니다.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section className="lp-section lp-final">
           <h2 className="lp-final-headline lp-reveal">
             글 잘 쓰는 사람이 회사 가냐,<br/>
             <span className="lp-final-accent">일 잘하는 사람이 회사 가자.</span>
