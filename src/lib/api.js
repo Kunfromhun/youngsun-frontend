@@ -21,7 +21,10 @@ const apiCall = async (endpoint, method = 'GET', body = null) => {
   
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.details || errorData.error || `HTTP ${response.status}`);
+    const err = new Error(errorData.details || errorData.error || `HTTP ${response.status}`);
+    err.status = response.status;
+    err.code = errorData.code || null;
+    throw err;
   }
   
   return response.json();
@@ -253,4 +256,10 @@ export const deepglApi = {
   }
 };
 
-export default { resumeApi, projectApi, deepglApi };
+export const membershipApi = {
+  recordInquiry: async (userId) => {
+    return apiCall('/membership-inquiries', 'POST', { userId });
+  }
+};
+
+export default { resumeApi, projectApi, deepglApi, membershipApi };

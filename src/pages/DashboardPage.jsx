@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { projectApi, resumeApi } from '../lib/api';
-
+import { projectApi, resumeApi, membershipApi } from '../lib/api';
 // 브라우저 알림 발송
 const sendNotification = (title, body) => {
   const originalTitle = document.title;
@@ -35,7 +34,8 @@ const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
-  const [resumes, setResumes] = useState([]);
+  const [showRateLimitModal, setShowRateLimitModal] = useState(false);
+    const [resumes, setResumes] = useState([]);
 
   const { userId, email, signOut } = useAuth();
   const navigate = useNavigate();
@@ -192,24 +192,85 @@ const DashboardPage = () => {
       </main>
 
       {showNewProjectModal && (
-        <NewProjectModal
-          userId={userId}
-          resumes={resumes}
-          onClose={() => setShowNewProjectModal(false)}
-          onCreated={(newProject) => {
+       <NewProjectModal
+       userId={userId}
+       resumes={resumes}
+       onClose={() => setShowNewProjectModal(false)}
+       onRateLimit={() => {
+         setShowNewProjectModal(false);
+         setShowRateLimitModal(true);
+       }}
+       onCreated={(newProject) => {
             setProjects([...projects, newProject]);
             setShowNewProjectModal(false);
             navigate(`/project/${newProject.id}`);
           }}
         />
       )}
+
+      {showRateLimitModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 9999
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: '20px', padding: '36px',
+            maxWidth: '420px', width: '90%', textAlign: 'center',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
+          }}>
+            <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+              <svg width="56" height="56" viewBox="0 0 200 200">
+                <circle cx="100" cy="100" r="80" fill="rgba(156,163,175,0.15)" stroke="rgba(107,114,128,0.3)" strokeWidth="3" />
+                <rect x="92" y="40" width="16" height="120" fill="rgba(74,85,104,0.7)" rx="8" />
+                <rect x="40" y="92" width="120" height="16" fill="rgba(74,85,104,0.7)" rx="8" />
+              </svg>
+            </div>
+            <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px', color: '#1D1D1F' }}>
+              일일 생성 한도 도달
+            </h3>
+            <p style={{ fontSize: '14px', color: '#6E6E73', lineHeight: 1.7, marginBottom: '8px', wordBreak: 'keep-all' }}>
+              일반회원은 24시간 내 프로젝트를 1개만 생성할 수 있습니다.
+            </p>
+            <p style={{ fontSize: '14px', color: '#6E6E73', lineHeight: 1.7, marginBottom: '24px', wordBreak: 'keep-all' }}>
+              멤버십을 희망하시면, 아래의 'Becoming a Member'를 클릭해주세요.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              
+            <button
+            onClick={() => {
+              membershipApi.recordInquiry(userId).catch(() => {});
+              window.location.href = 'mailto:hyochanggongwon@naver.com?subject=멤버십 문의';
+                        }}
+            style={{
+              display: 'block', width: '100%', padding: '14px 20px', borderRadius: '12px',
+              background: '#1D1D1F', color: '#fff', fontSize: '14px',
+              fontWeight: 600, border: 'none', cursor: 'pointer'
+            }}
+          >
+            Becoming a Member
+          </button>
+              <button
+                onClick={() => setShowRateLimitModal(false)}
+                style={{
+                  padding: '14px 20px', borderRadius: '12px',
+                  background: 'transparent', border: '1px solid rgba(0,0,0,0.08)',
+                  color: '#6E6E73', fontSize: '14px', fontWeight: 500, cursor: 'pointer'
+                }}
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 // 새 프로젝트 생성 모달
-const NewProjectModal = ({ userId, resumes, onClose, onCreated }) => {
-  const [step, setStep] = useState(1); // 1: 입력, 2: 분석 중
+const NewProjectModal = ({ userId, resumes, onClose, onRateLimit, onCreated }) => {
+    const [step, setStep] = useState(1); // 1: 입력, 2: 분석 중
   const [loadingMessage, setLoadingMessage] = useState('');
   const [formData, setFormData] = useState({
     company: '',
@@ -314,8 +375,12 @@ const NewProjectModal = ({ userId, resumes, onClose, onCreated }) => {
       }, 500);
       
     } catch (err) {
-      setError(err.message || '프로젝트 생성에 실패했습니다.');
-      setStep(1);
+      if (err.status === 429) {
+        onRateLimit();
+      } else {
+        setError(err.message || '프로젝트 생성에 실패했습니다.');
+        setStep(1);
+      }
     }
   };
 // 로딩 화면 (분석 중) - 전체화면 버전
