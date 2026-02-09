@@ -294,20 +294,23 @@ const NewProjectModal = ({ userId, resumes, onClose, onRateLimit, onCreated }) =
     resumeId: '',
     questions: [{ text: '', wordLimit: '1000' }]
   });
+  
   const [error, setError] = useState('');
-
+  const [showQuestionLimitModal, setShowQuestionLimitModal] = useState(false);
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
-
   const handleQuestionChange = (index, field, value) => {
     const newQuestions = [...formData.questions];
     newQuestions[index][field] = value;
     setFormData(prev => ({ ...prev, questions: newQuestions }));
   };
-
   const addQuestion = () => {
+    if (formData.questions.length >= 2) {
+      setShowQuestionLimitModal(true);
+      return;
+    }
     setFormData(prev => ({
       ...prev,
       questions: [...prev.questions, { text: '', wordLimit: '1000' }]
@@ -595,10 +598,56 @@ return (
               )}
             </div>
           ))}
-          <button type="button" className="add-question-btn" onClick={addQuestion}>
+        <button type="button" className="add-question-btn" onClick={addQuestion}>
             + 문항 추가
           </button>
         </div>
+
+        {showQuestionLimitModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000
+          }}>
+            <div style={{
+              background: '#fff',
+              borderRadius: '16px',
+              padding: '32px',
+              maxWidth: '400px',
+              width: '90%',
+              textAlign: 'center'
+            }}>
+              <p style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#1F2937',
+                lineHeight: '1.6',
+                margin: '0 0 24px 0'
+              }}>
+                일반회원은 프로젝트 생성 시,<br />최대 2개의 문항까지 생성할 수 있습니다.
+              </p>
+              <button
+                onClick={() => setShowQuestionLimitModal(false)}
+                style={{
+                  background: '#1F2937',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '10px 32px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        )}
         
         <div style={{
           display: 'flex',
