@@ -6808,7 +6808,7 @@ return (
           </div>
                  {/* 질문 재생성 새로고침 아이콘 (S는 제외) */}
                  {starMcqType !== 'S' && <div
-            onClick={handleRegenerateStarQuestion}
+            onClick={starMcqType === 'PHASE2' ? handleMainQuestionHelp : handleRegenerateStarQuestion}
             style={{
               padding: '6px',
               cursor: 'pointer',
