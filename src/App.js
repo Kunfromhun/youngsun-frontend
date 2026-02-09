@@ -3932,14 +3932,27 @@ setTimeout(async () => {
   const handleSaveParagraph = async (paragraphId, editedText) => {
     console.log(`[${new Date().toISOString()}] Saving paragraph:`, { paragraphId, editedText });
     try {
-      const updatedParagraphs = state.coverLetterParagraphs.map((paragraph =>
+      const updatedParagraphs = state.coverLetterParagraphs.map(paragraph =>
         paragraph.id === paragraphId ? { ...paragraph, text: editedText } : paragraph
-      ));
+      );
       dispatch({
         type: 'SET_COVER_LETTER',
         paragraphs: updatedParagraphs
       });
       localStorage.setItem(`coverLetter_${state.resumeId}`, JSON.stringify(updatedParagraphs));
+      
+      // DB 업데이트 (edit_history 트리거 발동)
+      const fullText = updatedParagraphs.map(p => p.text).join('\n\n');
+      fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/update-cover-letter-text`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: currentProjectId,
+          questionId: currentQuestionId,
+          contentText: fullText
+        })
+      }).catch(err => console.warn('[DB_SYNC] 자소서 DB 동기화 실패:', err));
+      
       setChatHistory([...chatHistory, { sender: '딥글', message: `문단 ${paragraphId} 저장 완료` }]);
       goToCoverLetterView();
     } catch (error) {
