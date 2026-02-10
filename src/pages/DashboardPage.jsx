@@ -307,8 +307,9 @@ const NewProjectModal = ({ userId, resumes, onClose, onRateLimit, onCreated }) =
     setFormData(prev => ({ ...prev, questions: newQuestions }));
   };
   const addQuestion = () => {
-    const unlimitedUsers = ['abbykyung@gmail.com', 'dbqudgns9803@gmail.com'];
-    if (formData.questions.length >= 2 && !unlimitedUsers.includes(email)) {
+    const unlimitedEmails = ['abbykyung@gmail.com', 'dbqudgns9803@gmail.com'];
+    const userEmail = email || '';
+    if (formData.questions.length >= 2 && !unlimitedEmails.includes(userEmail)) {
       setShowQuestionLimitModal(true);
       return;
     }
