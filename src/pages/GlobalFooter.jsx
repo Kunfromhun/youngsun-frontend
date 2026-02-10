@@ -9,7 +9,7 @@ const GlobalFooter = ({ dark }) => {
   return (
     <footer style={{
       padding: '32px 24px',
-      borderTop: `0.5px solid ${borderColor}`,
+      borderTop: 'none',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -17,7 +17,7 @@ const GlobalFooter = ({ dark }) => {
       textAlign: 'center',
     }}>
       <p style={{ fontSize: '11px', color: textColor, lineHeight: 1.8 }}>
-        딥글 | 대표: 유병훈 | 사업자등록번호: 12345678 | 통신판매업 신고번호: 123445678
+      DeepGL (딥글) | 대표: 유병훈 | 사업자등록번호: 12345678 | 통신판매업 신고번호: 123445678
         <br />
         주소: 서울특별시 용산구 | 연락처: 010-1234-5678
       </p>
