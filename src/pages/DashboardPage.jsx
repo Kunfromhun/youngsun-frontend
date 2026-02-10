@@ -202,7 +202,8 @@ const DashboardPage = () => {
       </main>
 
       {showNewProjectModal && (
-       <NewProjectModal
+      <NewProjectModal
+      email={email}
        userId={userId}
        resumes={resumes}
        onClose={() => setShowNewProjectModal(false)}
@@ -282,8 +283,8 @@ const DashboardPage = () => {
 };
 
 // 새 프로젝트 생성 모달
-const NewProjectModal = ({ userId, resumes, onClose, onRateLimit, onCreated }) => {
-    const [step, setStep] = useState(1); // 1: 입력, 2: 분석 중
+const NewProjectModal = ({ userId, email, resumes, onClose, onRateLimit, onCreated }) => {
+  const [step, setStep] = useState(1); // 1: 입력, 2: 분석 중
   const [loadingMessage, setLoadingMessage] = useState('');
   const [formData, setFormData] = useState({
     company: '',
