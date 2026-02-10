@@ -1,15 +1,32 @@
 // src/lib/api.js
+import { supabase } from './supabaseClient';
+
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app';
+
+// ============================================
+// 인증 토큰 가져오기
+// ============================================
+
+const getAuthHeaders = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    return { Authorization: `Bearer ${session.access_token}` };
+  }
+  return {};
+};
 
 // ============================================
 // 공통 API 호출 함수
 // ============================================
 
 const apiCall = async (endpoint, method = 'GET', body = null) => {
+  const authHeaders = await getAuthHeaders();
+  
   const options = {
     method,
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      ...authHeaders
     }
   };
   
@@ -42,8 +59,10 @@ export const resumeApi = {
     formData.append('userId', userId);
     formData.append('versionName', versionName);
     
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/resumes`, {
       method: 'POST',
+      headers: { ...authHeaders },
       body: formData
     });
     
@@ -166,8 +185,10 @@ export const deepglApi = {
     if (data.projectId) formData.append('projectId', data.projectId);
     if (data.questionId) formData.append('questionId', data.questionId);
     
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/analyze-all`, {
       method: 'POST',
+      headers: { ...authHeaders },
       body: formData
     });
     
