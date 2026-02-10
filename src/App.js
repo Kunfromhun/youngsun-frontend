@@ -3463,34 +3463,35 @@ const typewriterSTARTexts = (fields, onComplete) => {
       const data = await response.json();
       console.log(`[${new Date().toISOString()}] /generate-question response:`, data);
       
-      // ✅ Phase 2 전환: 일반텍스트로 Phase 1 완료 시 fetchEpisodeDetailQuestion과 동일 처리
-      if (data.phaseNumber === 2 && data.inputType === 'single') {
-        console.log('[Phase2] 일반텍스트 Phase 1 완료 → Phase 2 단일 입력창 전환');
-        dispatch({ type: 'SET_CHAT_LOADING', chatLoading: false });
-        setCurrentPhaseNumber(2);
-        setQuestionCount(2);
-        setCurrentStarStep('S');
-        setStarInputs({ situation: '', task: '', action: '', result: '' });
-        setInputMode('text');
-        setInputFields(null);
-        setStarDisplayTexts({
-          situation: { line1: '', line2: '' },
-          task: { line1: '', line2: '' },
-          action: { line1: '', line2: '' },
-          result: { line1: '', line2: '' }
-        });
-        typewriterEffect(data.question, () => {
-          setChatHistory(prev => [...prev, {
-            sender: '딥글',
-            message: data.question,
-            hint: data.placeholder || ''
-          }]);
-          if (data.placeholder) {
-            setCurrentQuestionHint(data.placeholder);
-          }
-        });
-        return;
-      }
+     // ✅ Phase 2 전환: 일반텍스트로 Phase 1 완료 시 fetchEpisodeDetailQuestion과 동일 처리
+     console.log('[DEBUG_PHASE2] phaseNumber:', data.phaseNumber, typeof data.phaseNumber, 'inputType:', data.inputType, 'inputFields:', data.inputFields);
+     if (data.phaseNumber === 2 && data.inputType === 'single') {
+      console.log('[Phase2] 일반텍스트 Phase 1 완료 → Phase 2 단일 입력창 전환');
+      dispatch({ type: 'SET_CHAT_LOADING', chatLoading: false });
+      setCurrentPhaseNumber(2);
+      setQuestionCount(2);
+      setCurrentStarStep('S');
+      setStarInputs({ situation: '', task: '', action: '', result: '' });
+      setInputMode('text');
+      setInputFields(null);
+      setStarDisplayTexts({
+        situation: { line1: '', line2: '' },
+        task: { line1: '', line2: '' },
+        action: { line1: '', line2: '' },
+        result: { line1: '', line2: '' }
+      });
+      typewriterEffect(data.question, () => {
+        setChatHistory(prev => [...prev, {
+          sender: '딥글',
+          message: data.question,
+          hint: data.placeholder || ''
+        }]);
+        if (data.placeholder) {
+          setCurrentQuestionHint(data.placeholder);
+        }
+      });
+      return;
+    }
       
       if (data.error) {
         setChatHistory(prev => [...prev, { sender: '딥글', message: data.error, type: 'error' }]);
