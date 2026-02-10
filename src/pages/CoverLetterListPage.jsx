@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { authFetch } from '../lib/api';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app';
 
@@ -22,7 +23,7 @@ const CoverLetterListPage = () => {
 
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/api/user-database/${userId}/${encodeURIComponent(decodedCompanyName)}/cover-letters`);
+      const response = await authFetch(`${API_BASE_URL}/api/user-database/${userId}/${encodeURIComponent(decodedCompanyName)}/cover-letters`);
       const data = await response.json();
       setCoverLetters(data.coverLetters || []);
     } catch (err) {
@@ -49,7 +50,7 @@ const CoverLetterListPage = () => {
     }
     setAddLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/manual/cover-letter`, {
+      const response = await authFetch(`${API_BASE_URL}/api/manual/cover-letter`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

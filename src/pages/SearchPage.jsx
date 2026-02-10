@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { authFetch } from '../lib/api';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app';
 
@@ -24,7 +25,7 @@ const SearchPage = () => {
       setLoading(true);
       setError('');
       try {
-        const response = await fetch(`${API_BASE_URL}/api/search?userId=${userId}&query=${encodeURIComponent(query)}`);
+        const response = await authFetch(`${API_BASE_URL}/api/search?userId=${userId}&query=${encodeURIComponent(query)}`);
         const data = await response.json();
         if (data.success) {
           setResults(data.results);

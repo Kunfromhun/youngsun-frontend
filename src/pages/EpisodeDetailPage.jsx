@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { authFetch } from '../lib/api';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app';
 
@@ -26,7 +27,7 @@ const EpisodeDetailPage = () => {
 
       try {
         setLoading(true);
-        const response = await fetch(`${API_BASE_URL}/api/user-database/episode/${episodeId}?userId=${userId}`);
+        const response = await authFetch(`${API_BASE_URL}/api/user-database/episode/${episodeId}?userId=${userId}`);
         const data = await response.json();
         if (data.episode) {
           setEpisode(data.episode);
@@ -48,7 +49,7 @@ const EpisodeDetailPage = () => {
   const handleTitleSave = async () => {
     if (!editedTitle.trim()) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/api/user-database/episode/${episodeId}`, {
+      const response = await authFetch(`${API_BASE_URL}/api/user-database/episode/${episodeId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, title: editedTitle.trim() })
@@ -68,7 +69,7 @@ const EpisodeDetailPage = () => {
     try {
       setSaving(true);
       setError('');
-      const response = await fetch(`${API_BASE_URL}/api/user-database/episode/${episodeId}`, {
+      const response = await authFetch(`${API_BASE_URL}/api/user-database/episode/${episodeId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -98,7 +99,7 @@ const EpisodeDetailPage = () => {
   const handleDelete = async () => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/api/user-database/episode/${episodeId}`, {
+      const response = await authFetch(`${API_BASE_URL}/api/user-database/episode/${episodeId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId })

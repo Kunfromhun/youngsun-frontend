@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { projectApi } from '../lib/api';
+import { projectApi, authFetch } from '../lib/api';
 import ReuseProposalModal from '../components/ReuseProposalModal';
 import EpisodePreviewModal from '../components/EpisodePreviewModal';
 
@@ -161,7 +161,7 @@ if (currentQuestion.status === 'reuse_pending') {
   const handleReuseConfirm = async () => {
     setReuseLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/generate-reuse-episode`, {
+      const response = await authFetch(`${API_BASE_URL}/api/generate-reuse-episode`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -208,7 +208,7 @@ if (currentQuestion.status === 'reuse_pending') {
 const handleReuseReject = async () => {
   // 백엔드에 status를 direction으로 변경
   try {
-    await fetch(`${API_BASE_URL}/api/projects/${projectId}/questions/${questionId}`, {
+    await authFetch(`${API_BASE_URL}/api/projects/${projectId}/questions/${questionId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

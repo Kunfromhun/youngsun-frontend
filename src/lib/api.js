@@ -16,6 +16,20 @@ const getAuthHeaders = async () => {
 };
 
 // ============================================
+// 인증 포함 fetch (직접 fetch 쓰는 곳에서 사용)
+// ============================================
+export const authFetch = async (url, options = {}) => {
+  const authHeaders = await getAuthHeaders();
+  return fetch(url, {
+    ...options,
+    headers: {
+      ...options.headers,
+      ...authHeaders
+    }
+  });
+};
+
+// ============================================
 // 공통 API 호출 함수
 // ============================================
 

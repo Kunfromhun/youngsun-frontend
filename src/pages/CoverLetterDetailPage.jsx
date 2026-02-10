@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { authFetch } from '../lib/api';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app';
 
@@ -26,7 +27,7 @@ const CoverLetterDetailPage = () => {
 
       try {
         setLoading(true);
-        const response = await fetch(`${API_BASE_URL}/api/user-database/cover-letter/${coverLetterId}?userId=${userId}`);
+        const response = await authFetch(`${API_BASE_URL}/api/user-database/cover-letter/${coverLetterId}?userId=${userId}`);
         const data = await response.json();
         if (data.coverLetter) {
           setCoverLetter(data.coverLetter);
@@ -48,7 +49,7 @@ const CoverLetterDetailPage = () => {
   const handleTitleSave = async () => {
     if (!editedTitle.trim()) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/api/user-database/cover-letter/${coverLetterId}`, {
+      const response = await authFetch(`${API_BASE_URL}/api/user-database/cover-letter/${coverLetterId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, title: editedTitle.trim() })
@@ -68,7 +69,7 @@ const CoverLetterDetailPage = () => {
     try {
       setSaving(true);
       setError('');
-      const response = await fetch(`${API_BASE_URL}/api/user-database/cover-letter/${coverLetterId}`, {
+      const response = await authFetch(`${API_BASE_URL}/api/user-database/cover-letter/${coverLetterId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -98,7 +99,7 @@ const CoverLetterDetailPage = () => {
   const handleDelete = async () => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/api/user-database/cover-letter/${coverLetterId}`, {
+      const response = await authFetch(`${API_BASE_URL}/api/user-database/cover-letter/${coverLetterId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId })

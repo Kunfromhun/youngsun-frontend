@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabaseClient';
+import { authFetch } from '../lib/api';
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app';
 const DatabasePage = () => {
   const [companies, setCompanies] = useState([]);
@@ -15,10 +15,8 @@ const DatabasePage = () => {
       if (!userId) return;
       try {
         setLoading(true);
-        const { data: { session } } = await supabase.auth.getSession();
-        const response = await fetch(`${API_BASE_URL}/api/user-database/${userId}`, {
-          headers: { Authorization: `Bearer ${session?.access_token}` }
-        });        const data = await response.json();
+        const response = await authFetch(`${API_BASE_URL}/api/user-database/${userId}`);
+        const data = await response.json();
         if (data.success) {
           setCompanies(data.companies || []);
         }
