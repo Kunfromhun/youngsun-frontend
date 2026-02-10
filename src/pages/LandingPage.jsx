@@ -722,10 +722,17 @@ const LandingPage = () => {
         .lp-final-cta:hover svg { transform: translateX(4px); }
 
         /* FOOTER */
-        .lp-footer {
+.lp-footer {
           text-align: center; padding: 48px; border-top: 0.5px solid var(--border);
+          display: flex; flex-direction: column; align-items: center; gap: 12px;
         }
         .lp-footer p { font-size: 12px; color: var(--text-4); letter-spacing: 0.02em; }
+        .lp-footer-links { display: flex; gap: 20px; }
+        .lp-footer-links a {
+          font-size: 12px; color: var(--text-4); text-decoration: none;
+          transition: color 0.2s;
+        }
+        .lp-footer-links a:hover { color: var(--text-3); }
 
      .lp-section-label {
           font-size: 13px; font-weight: 600; letter-spacing: 0.08em;
@@ -1298,7 +1305,11 @@ const LandingPage = () => {
 
         {/* FOOTER */}
         <footer className="lp-footer">
-          <p translate="no">© 2025 DeepGL. All rights reserved.</p>
+          <div className="lp-footer-links">
+            <a href="/privacy">개인정보 처리방침</a>
+            <a href="/terms">이용약관</a>
+          </div>
+          <p translate="no">© 2026 DeepGL. All rights reserved.</p>
         </footer>
       </div>
     </>
