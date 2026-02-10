@@ -153,7 +153,8 @@ const DashboardPage = () => {
                   const created = new Date(p.created_at || p.createdAt);
                   return (Date.now() - created.getTime()) < 24 * 60 * 60 * 1000;
                 });
-                if (recentProject) {
+                const unlimitedEmails = ['abbykyung@gmail.com', 'dbqudgns9803@gmail.com'];
+                if (recentProject && !unlimitedEmails.includes(email)) {
                   setShowRateLimitModal(true);
                 } else {
                   setShowNewProjectModal(true);
