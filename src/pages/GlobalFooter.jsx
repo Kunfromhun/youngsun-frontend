@@ -10,6 +10,7 @@ const GlobalFooter = ({ dark }) => {
     <footer style={{
       padding: '32px 24px',
       borderTop: 'none',
+      background: '#FBFBFD',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
