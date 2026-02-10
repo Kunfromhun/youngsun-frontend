@@ -3,6 +3,7 @@
 // This section includes imports, initial state, reducer, and state declarations
 // Attach this section first when reconstructing App.js
 import React, { useState, useReducer, useRef, useEffect, useCallback } from 'react';
+import { authFetch } from './lib/api';
 import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';import './App.css';
 import { useAuth } from './contexts/AuthContext';
 import LoginPage from './pages/LoginPage';
@@ -1247,7 +1248,7 @@ const fetchNextStarQuestion = async (completedStarType) => {
     if (starInputs.action?.trim()) previousStarContents.A = starInputs.action;
     if (starInputs.result?.trim()) previousStarContents.R = starInputs.result;
     
-    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-next-star-question`, {
+    const response = await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-next-star-question`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1314,7 +1315,7 @@ const fetchEpisodeDetailQuestion = async () => {
       R: starInputs.result || ''
     };
     
-    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-episode-detail-question`, {
+    const response = await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-episode-detail-question`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1394,7 +1395,7 @@ const handleMainQuestionHelp = async () => {
   console.log('[handleMainQuestionHelp] selectedExperience:', selectedExperience);
   console.log('[handleMainQuestionHelp] state.companyInfo:', state.companyInfo);
   
-  const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/regenerate-main-question`, {
+  const response = await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/regenerate-main-question`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -1437,7 +1438,7 @@ const handleSituationSelect = async (selectedSituation) => {
     const selectedExperience = state.selectedExperiences?.[selectedIndex];
     const currentWhySelected = selectedExperience?.whySelected || {};
     
-    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/apply-situation-selection`, {
+    const response = await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/apply-situation-selection`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1568,7 +1569,7 @@ const handleStarMcqStart = async (starType) => {
       questionId: currentQuestionId
     };
 
-    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq`, {
+    const response = await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody)
@@ -1643,7 +1644,7 @@ const handleStarMcqSelect = async (selectedOption) => {
       questionId: currentQuestionId
     };
 
-    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq-answer`, {
+    const response = await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq-answer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(answerBody)
@@ -1704,7 +1705,7 @@ const fetchNextDepthQuestion = async (starType, currentDepthSelections) => {
       questionId: currentQuestionId
     };
 
-    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq`, {
+    const response = await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(depthBody)
@@ -1742,7 +1743,7 @@ const fetchNextStarFirstQuestion = async (starType, updatedStarInputs) => {
     if (updatedStarInputs.action?.trim()) previousStarContents.A = updatedStarInputs.action;
     if (updatedStarInputs.result?.trim()) previousStarContents.R = updatedStarInputs.result;
     
-    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq`, {
+    const response = await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1833,7 +1834,7 @@ const completeBody = currentStarType === 'PHASE2' ? {
   questionId: currentQuestionId
 };
 
-const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq-answer`, {
+const response = await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-star-mcq-answer`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify(completeBody)
@@ -1893,7 +1894,7 @@ const handleStarMcqComplete = async (answers) => {
     const selectedIndex = state.selectedExperiencesIndices[currentTopicIndex];
     const selectedExperience = state.selectedExperiences?.[selectedIndex];
     
-    await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/complete-star-mcq`, {
+    await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/complete-star-mcq`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1950,7 +1951,7 @@ const handleRegenerateStarQuestion = async () => {
     if (starInputs.action?.trim()) previousStarContents.A = starInputs.action;
     if (starInputs.result?.trim()) previousStarContents.R = starInputs.result;
 
-    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/regenerate-star-question`, {
+    const response = await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/regenerate-star-question`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -2012,7 +2013,7 @@ const handleStarMcqCancel = () => {
       if (starInputs.action) previousStarContents.A = starInputs.action;
       if (starInputs.result) previousStarContents.R = starInputs.result;
       
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/regenerate-star-mcq-options`, {
+      const response = await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/regenerate-star-mcq-options`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2055,7 +2056,7 @@ const handleStarMcqCancel = () => {
     setSavingEpisode(true);
     
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/update-session-episode`, {
+      const response = await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/update-session-episode`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2111,7 +2112,7 @@ const handleStartMcq = async (fieldKey, stakeholderQuestion) => {
     const selectedExperience = state.selectedExperiences?.[selectedIndex];
     const currentWhySelected = selectedExperience?.whySelected || '';
     
-    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-mcq`, {
+    const response = await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-mcq`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -2152,7 +2153,7 @@ const handleMcqSelect = async (selectedOption) => {
     // 다음 단계 질문 요청
     setMcqLoading(true);
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-mcq`, {
+      const response = await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-mcq`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2185,7 +2186,7 @@ const handleMcqSelect = async (selectedOption) => {
 const handleMcqGenerateAnswer = async (selections) => {
   setMcqLoading(true);
   try {
-    const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-mcq-answer`, {
+    const response = await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/generate-mcq-answer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -2681,7 +2682,7 @@ coreCompetency: coreCompetency || ''
       try {
         dispatch({ type: 'SET_CHAT_LOADING', chatLoading: true });
         
-        const response = await fetch('https://youngsun-xi.vercel.app/generate-question', {
+        const response = await authFetch('https://youngsun-xi.vercel.app/generate-question', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -3013,7 +3014,7 @@ const typewriterSTARTexts = (fields, onComplete) => {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000);
-      const response = await fetch('https://youngsun-xi.vercel.app/pre-analyze', {
+      const response = await authFetch('https://youngsun-xi.vercel.app/pre-analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -3073,7 +3074,7 @@ const typewriterSTARTexts = (fields, onComplete) => {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000);
-      const response = await fetch('https://youngsun-xi.vercel.app/analyze-all', {
+      const response = await authFetch('https://youngsun-xi.vercel.app/analyze-all', {
         method: 'POST',
         body: formData,
         signal: controller.signal,
@@ -3218,7 +3219,7 @@ const typewriterSTARTexts = (fields, onComplete) => {
         questionTopics: state.questionTopics
       };
    
-      const response = await fetch('https://youngsun-xi.vercel.app/suggest-direction', {
+      const response = await authFetch('https://youngsun-xi.vercel.app/suggest-direction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
@@ -3345,7 +3346,7 @@ const typewriterSTARTexts = (fields, onComplete) => {
         selectedExperiencesIndices: state.selectedExperiencesIndices
       });
      
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-question', {
+      const response = await authFetch('https://youngsun-xi.vercel.app/generate-question', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -3443,7 +3444,7 @@ const typewriterSTARTexts = (fields, onComplete) => {
         console.log(`[${new Date().toISOString()}] step ${currentStep - 1} question success`);
       }
       dispatch({ type: 'SET_CHAT_LOADING', chatLoading: true, message: '생각 중...' });
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-question', {
+      const response = await authFetch('https://youngsun-xi.vercel.app/generate-question', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -3615,7 +3616,7 @@ if (inputMode === 'star' && currentStarStep !== 'DONE') {
           R: starInputs.result || ''
         };
         
-        await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/complete-star-mcq`, {
+        await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/complete-star-mcq`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -3706,7 +3707,7 @@ setTimeout(async () => {
         throw new Error(`주제 ${currentTopic}에 선택된 경험이 없습니다.`);
       }
       console.log(`[${new Date().toISOString()}] Sending /generate-episode with selectedExperienceIndices:`, state.selectedExperiencesIndices);
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-episode', {
+      const response = await authFetch('https://youngsun-xi.vercel.app/generate-episode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -3817,7 +3818,7 @@ setTimeout(async () => {
       }
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 600000);
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-plan', {
+      const response = await authFetch('https://youngsun-xi.vercel.app/generate-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -3893,7 +3894,7 @@ setTimeout(async () => {
       }
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000);
-      const response = await fetch('https://youngsun-xi.vercel.app/generate-cover-letter', {
+      const response = await authFetch('https://youngsun-xi.vercel.app/generate-cover-letter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -4004,7 +4005,7 @@ setTimeout(async () => {
       
       console.log(`[${new Date().toISOString()}] [Proofreading] Sending request to /edit-cover-letter`);
       
-      const response = await fetch('https://youngsun-xi.vercel.app/edit-cover-letter', {
+      const response = await authFetch('https://youngsun-xi.vercel.app/edit-cover-letter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -8574,7 +8575,7 @@ const DeepglFlow = ({ project, question, onBack }) => {
       
       try {
         // 0. 먼저 기존 진행 상태 확인
-        const stateRes = await fetch(
+        const stateRes = await authFetch(
           `${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/questions/${question.id}/state?projectId=${project.id}`
         );
         const stateData = await stateRes.json();
@@ -8615,7 +8616,7 @@ const DeepglFlow = ({ project, question, onBack }) => {
           if (status === 'direction') {
             // 방향성 선택 화면 - 카드 데이터가 없으면 API 호출
             if (!analysisData.selectedExperiences || analysisData.selectedExperiences.length === 0) {
-              const directionRes = await fetch(
+              const directionRes = await authFetch(
                 `${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/projects/${project.id}/questions/${question.id}/direction?userId=${userId}`
               );
               const directionData = await directionRes.json();
@@ -8685,7 +8686,7 @@ const DeepglFlow = ({ project, question, onBack }) => {
       // 새 문항 - DB에서 이미 분석된 데이터 즉시 로드
       setLoadingMessage('경험 카드를 불러오고 있습니다...');
 
-      const directionRes = await fetch(
+      const directionRes = await authFetch(
         `${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/projects/${project.id}/questions/${question.id}/direction?userId=${userId}`
       );
       const directionData = await directionRes.json();
@@ -8760,7 +8761,7 @@ const DeepglFlow = ({ project, question, onBack }) => {
     const handleReuseConfirm = async () => {
       setReuseLoading(true);
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/api/generate-reuse-episode`, {
+        const response = await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/api/generate-reuse-episode`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -8805,14 +8806,14 @@ const DeepglFlow = ({ project, question, onBack }) => {
     const handleReuseReject = async () => {
       try {
         // 1. 상태를 direction으로 변경
-        await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/api/projects/${project.id}/questions/${question.id}`, {
+        await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/api/projects/${project.id}/questions/${question.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId, status: 'direction' })
         });
         
         // 2. direction API 호출해서 경험 카드 로드
-        const directionRes = await fetch(
+        const directionRes = await authFetch(
           `${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/projects/${project.id}/questions/${question.id}/direction?userId=${userId}`
         );
         const directionData = await directionRes.json();
@@ -9310,7 +9311,7 @@ const DeepglFlow = ({ project, question, onBack }) => {
                 
         // DB에 선택한 인덱스 저장
         try {
-          await fetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/projects/${project.id}/questions/${question.id}`, {
+          await authFetch(`${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/projects/${project.id}/questions/${question.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -9393,7 +9394,7 @@ const DeepglFlowWrapper = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const response = await fetch(
+        const response = await authFetch(
           `${process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app'}/projects/${projectId}?userId=${userId}`
         );
         const data = await response.json();
