@@ -2634,7 +2634,7 @@ coreCompetency: coreCompetency || ''
       }
     });
     
-    if (allInputFields.length > 0) {
+    if (allInputFields.length > 0 && restoredPhase !== 2) {
       setInputFields(allInputFields);
       setInputMode('star');
       
@@ -2650,6 +2650,13 @@ coreCompetency: coreCompetency || ''
       
       console.log('[DEBUG] Restored inputFields for:', allInputFields.map(f => f.key));
       console.log('[DEBUG] Restored displayTexts for all fields:', Object.keys(allDisplayTexts));
+    }
+    
+    // ✅ Phase 2 텍스트 모드 복원 (일반텍스트 Phase 2)
+    if (restoredPhase === 2 && !conversationState.lastInputFields) {
+      setInputFields(null);
+      setInputMode('text');
+      console.log('[DEBUG] Restored Phase 2 text mode');
     }
       
      // ✅ STAR 완료 여부 체크
