@@ -21,7 +21,7 @@ import CoverLetterDetailPage from './pages/CoverLetterDetailPage';
 import SearchPage from './pages/SearchPage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
-import GlobalFooter from './components/GlobalFooter';
+import GlobalFooter from './pages/GlobalFooter';
 // ============================================
 // ✅ 한국어 조사 처리 유틸리티
 // ============================================
@@ -5518,7 +5518,7 @@ if (screen === 'start' || screen === 'loading' || screen === 'direction-selectio
        <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />} />
   </Routes>
   {isAuthenticated && <GlobalFooter />}
-  
+
   </>
   );
 }

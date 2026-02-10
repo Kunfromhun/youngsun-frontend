@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import GlobalFooter from '../components/GlobalFooter';
+import GlobalFooter from './GlobalFooter';
 
 const LandingPage = () => {
   const navigate = useNavigate();
