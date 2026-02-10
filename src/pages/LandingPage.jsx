@@ -1305,7 +1305,7 @@ const LandingPage = () => {
         </section>
 
         {/* FOOTER */}
-        <GlobalFooter dark />
+        <GlobalFooter />
       </div>
     </>
   );
