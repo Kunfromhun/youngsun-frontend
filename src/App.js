@@ -3465,7 +3465,7 @@ const typewriterSTARTexts = (fields, onComplete) => {
       
      // ✅ Phase 2 전환: 일반텍스트로 Phase 1 완료 시 fetchEpisodeDetailQuestion과 동일 처리
      console.log('[DEBUG_PHASE2] phaseNumber:', data.phaseNumber, typeof data.phaseNumber, 'inputType:', data.inputType, 'inputFields:', data.inputFields);
-     if (data.phaseNumber === 2 && data.inputType === 'single') {
+     if (data.phaseNumber === 2 && !data.inputFields) {
       console.log('[Phase2] 일반텍스트 Phase 1 완료 → Phase 2 단일 입력창 전환');
       dispatch({ type: 'SET_CHAT_LOADING', chatLoading: false });
       setCurrentPhaseNumber(2);
@@ -3518,7 +3518,7 @@ const typewriterSTARTexts = (fields, onComplete) => {
         console.log(`[${new Date().toISOString()}] Phase number received: ${data.phaseNumber}`);
       }
 // v25.3: STAR inputFields 업데이트 + 타이프라이터 효과
-if (data.inputFields) {
+if (data.inputFields && data.phaseNumber !== 2) {
   setInputFields(data.inputFields);
   setInputMode('star');
   setStarInputs({ situation: '', task: '', action: '', result: '' });
