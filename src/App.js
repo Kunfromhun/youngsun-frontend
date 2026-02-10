@@ -21,6 +21,7 @@ import CoverLetterDetailPage from './pages/CoverLetterDetailPage';
 import SearchPage from './pages/SearchPage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
+import GlobalFooter from './components/GlobalFooter';
 // ============================================
 // ✅ 한국어 조사 처리 유틸리티
 // ============================================
@@ -5495,6 +5496,7 @@ if (screen === 'start' || screen === 'loading' || screen === 'direction-selectio
     );
   }
   return (
+    <>
     <Routes>
     <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
     <Route path="/signup" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <SignupPage />} />
@@ -5515,9 +5517,11 @@ if (screen === 'start' || screen === 'loading' || screen === 'direction-selectio
     <Route path="/terms" element={<TermsPage />} />
        <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />} />
   </Routes>
+  {isAuthenticated && <GlobalFooter />}
+  
+  </>
   );
 }
-
 
 
 

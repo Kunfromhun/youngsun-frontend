@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import GlobalFooter from '../components/GlobalFooter';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -1304,13 +1305,7 @@ const LandingPage = () => {
         </section>
 
         {/* FOOTER */}
-        <footer className="lp-footer">
-          <div className="lp-footer-links">
-            <a href="/privacy">개인정보 처리방침</a>
-            <a href="/terms">이용약관</a>
-          </div>
-          <p translate="no">© 2026 DeepGL. All rights reserved.</p>
-        </footer>
+        <GlobalFooter dark />
       </div>
     </>
   );
