@@ -2848,19 +2848,21 @@ progress::-webkit-progress-value {
 
 .questions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: var(--space-md);
 }
-
 .question-card {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--blur-heavy));
   -webkit-backdrop-filter: blur(var(--blur-heavy));
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-lg);
+  padding: var(--space-md);
   cursor: pointer;
   transition: all var(--animation-base) ease;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
 }
 
 .question-card:hover {

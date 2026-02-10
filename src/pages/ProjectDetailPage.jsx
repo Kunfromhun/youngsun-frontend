@@ -211,6 +211,7 @@ const ProjectDetailPage = () => {
           </button>
           
           <div className="project-title-section">
+            <p style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-tertiary)', marginBottom: '8px' }} translate="no">My DeepGL Session</p>
             <div className="project-title-row">
               <h1>{project.company} / {project.jobTitle}</h1>
               <DeepglLogo size={40} onClick={() => setShowAnalysisPopup(true)} />
