@@ -4,6 +4,7 @@
 // Attach this section first when reconstructing App.js
 import React, { useState, useReducer, useRef, useEffect, useCallback } from 'react';
 import { authFetch } from './lib/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app';
 import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';import './App.css';
 import { useAuth } from './contexts/AuthContext';
 import LoginPage from './pages/LoginPage';
@@ -1201,6 +1202,7 @@ const [starMcqOptions, setStarMcqOptions] = useState([]);
 // DGLC 잔액 부족 모달
 const [showDglcModal, setShowDglcModal] = useState(false);
 const [dglcModalData, setDglcModalData] = useState({ balance: 0, required: 0, code: '', message: '' });
+const [globalDglcBalance, setGlobalDglcBalance] = useState(null);
 const [starMcqLoading, setStarMcqLoading] = useState(false);
 const [starMcqSelections, setStarMcqSelections] = useState([]); // 이전 선택들 저장
 const [starMcqAnswers, setStarMcqAnswers] = useState({}); // { S: '...', T: '...', A: '...', R: '...' }
@@ -5381,6 +5383,25 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
+  if (!isAuthenticated) return;
+  const fetchDglcBalance = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch(`${API_BASE_URL}/api/dglc/balance?userId=${session.user.id}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      });
+      const data = await res.json();
+      if (data.success) setGlobalDglcBalance(data.balance);
+    } catch (e) { console.error(e); }
+  };
+  fetchDglcBalance();
+  const interval = setInterval(fetchDglcBalance, 30000);
+  window.addEventListener('dglc-balance-update', fetchDglcBalance);
+  return () => { clearInterval(interval); window.removeEventListener('dglc-balance-update', fetchDglcBalance); };
+}, [isAuthenticated]);
+
+useEffect(() => {
   // Focus Mode에서는 스크롤 불필요
 }, [chatHistory]);
 
@@ -5513,6 +5534,28 @@ if (screen === 'start' || screen === 'loading' || screen === 'direction-selectio
   }
   return (
     <>
+    {isAuthenticated && globalDglcBalance !== null && (
+      <div onClick={() => navigate('/dglc/charge')} style={{
+        position: 'fixed', top: '16px', right: '16px', zIndex: 9998,
+        background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+        borderRadius: '12px', padding: '8px 16px', cursor: 'pointer',
+        border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+        display: 'flex', alignItems: 'center', gap: '8px',
+        fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif",
+        transition: 'all 0.2s ease',
+      }}>
+        <div style={{
+          width: '24px', height: '24px', borderRadius: '50%',
+          background: 'linear-gradient(135deg, #1F2937, #374151)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <span style={{ color: '#fff', fontSize: '11px', fontWeight: '800' }}>D</span>
+        </div>
+        <span style={{ fontSize: '14px', fontWeight: '700', color: '#1F2937' }}>
+          {Number.isInteger(globalDglcBalance) ? globalDglcBalance : globalDglcBalance.toFixed(1)}
+        </span>
+      </div>
+    )}
     <Routes>
     <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
     <Route path="/signup" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <SignupPage />} />

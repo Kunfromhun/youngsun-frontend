@@ -32,6 +32,7 @@ const DGLCChargePage = () => {
   const [refundFee, setRefundFee] = useState(0);
   const [refundFinal, setRefundFinal] = useState(0);
   const [isRefundFocused, setIsRefundFocused] = useState(false);
+  const [refundableBalance, setRefundableBalance] = useState(null);
   const [refundLoading, setRefundLoading] = useState(false);
   const [refundError, setRefundError] = useState('');
   const [refundSuccess, setRefundSuccess] = useState('');
@@ -55,7 +56,10 @@ const DGLCChargePage = () => {
       const headers = await getAuthHeaders();
       const res = await fetch(`${API_BASE_URL}/api/dglc/balance?userId=${uid}`, { headers });
       const data = await res.json();
-      if (data.success) setBalance(data.balance);
+      if (data.success) {
+        setBalance(data.balance);
+        if (data.refundable_balance !== undefined) setRefundableBalance(data.refundable_balance);
+      }
     } catch (e) { console.error(e); }
   };
 
@@ -142,7 +146,7 @@ const DGLCChargePage = () => {
 
   // 환전 버튼 클릭
   const handleRefund = async () => {
-    if (refundFinal === 0 || refundLoading) return;
+    if (refundFinal === 0 || refundLoading || (refundableBalance !== null && parseFloat(refundInput) > refundableBalance)) return;
     setRefundError('');
     setRefundSuccess('');
     setRefundLoading(true);
@@ -331,7 +335,15 @@ const DGLCChargePage = () => {
           borderRadius: '24px', border: '1px solid rgba(0,0,0,0.06)', padding: '32px',
           boxShadow: '0 4px 24px rgba(0,0,0,0.04)', marginTop: '24px',
         }}>
-          <p style={{ fontSize: '18px', fontWeight: '800', color: '#1F2937', margin: '0 0 24px 0' }}>DGLC 환전</p>
+        <p style={{ fontSize: '18px', fontWeight: '800', color: '#1F2937', margin: '0 0 8px 0' }}>DGLC 환전</p>
+          {refundableBalance !== null && (
+            <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 20px 0' }}>
+              환전 가능: <span style={{ fontWeight: '700', color: '#1F2937' }}>{formatDGLC(refundableBalance)} DGLC</span>
+            </p>
+          )}
+          {refundableBalance !== null && parseFloat(refundInput) > refundableBalance && (
+            <p style={{ fontSize: '13px', color: '#EF4444', margin: '0 0 16px 0' }}>환전 가능 잔액을 초과했습니다.</p>
+          )}
 
           <div className="exchange-container">
             <div className="exchange-side" style={{
@@ -394,7 +406,7 @@ const DGLCChargePage = () => {
           {refundError && <p style={{ color: '#EF4444', fontSize: '14px', marginBottom: '16px', textAlign: 'center' }}>{refundError}</p>}
           {refundSuccess && <p style={{ color: '#10B981', fontSize: '14px', marginBottom: '16px', textAlign: 'center' }}>{refundSuccess}</p>}
 
-          <button disabled={refundFinal === 0 || refundLoading} onClick={handleRefund}
+          <button disabled={refundFinal === 0 || refundLoading || (refundableBalance !== null && parseFloat(refundInput) > refundableBalance)} onClick={handleRefund}
             style={{
               width: '100%', padding: '18px', borderRadius: '16px',
               background: refundFinal > 0 ? '#fff' : '#E5E7EB',
