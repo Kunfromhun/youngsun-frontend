@@ -1203,6 +1203,7 @@ const [starMcqOptions, setStarMcqOptions] = useState([]);
 const [showDglcModal, setShowDglcModal] = useState(false);
 const [dglcModalData, setDglcModalData] = useState({ balance: 0, required: 0, code: '', message: '' });
 const [globalDglcBalance, setGlobalDglcBalance] = useState(null);
+const [dglcRewardToast, setDglcRewardToast] = useState(null);
 const [starMcqLoading, setStarMcqLoading] = useState(false);
 const [starMcqSelections, setStarMcqSelections] = useState([]); // 이전 선택들 저장
 const [starMcqAnswers, setStarMcqAnswers] = useState({}); // { S: '...', T: '...', A: '...', R: '...' }
