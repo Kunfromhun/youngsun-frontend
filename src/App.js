@@ -22,6 +22,9 @@ import CoverLetterDetailPage from './pages/CoverLetterDetailPage';
 import SearchPage from './pages/SearchPage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
+import DGLCChargePage from './pages/DGLCChargePage';
+import DGLCSuccessPage from './pages/DGLCSuccessPage';
+import DGLCFailPage from './pages/DGLCFailPage';
 import GlobalFooter from './pages/GlobalFooter';
 // ============================================
 // ✅ 한국어 조사 처리 유틸리티
@@ -5514,6 +5517,9 @@ if (screen === 'start' || screen === 'loading' || screen === 'direction-selectio
     <Route path="/database/:companyName/episodes/:episodeId" element={!isAuthenticated ? <Navigate to="/login" replace /> : <EpisodeDetailPage />} />
     <Route path="/database/:companyName/cover-letters/:coverLetterId" element={!isAuthenticated ? <Navigate to="/login" replace /> : <CoverLetterDetailPage />} />        
     <Route path="/project/:projectId/question/:questionId" element={!isAuthenticated ? <Navigate to="/login" replace /> : <DeepglFlowWrapper />} />      
+    <Route path="/dglc/charge" element={!isAuthenticated ? <Navigate to="/login" replace /> : <DGLCChargePage />} />
+    <Route path="/dglc/success" element={!isAuthenticated ? <Navigate to="/login" replace /> : <DGLCSuccessPage />} />
+    <Route path="/dglc/fail" element={<DGLCFailPage />} />
     <Route path="/privacy" element={<PrivacyPage />} />
     <Route path="/terms" element={<TermsPage />} />
        <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />} />
