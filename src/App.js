@@ -5764,6 +5764,29 @@ return (
         </button>
       </aside>
       <main className="project-detail-main">
+        {/* DGLC 잔액 표시 - 딥글세션 전체 */}
+        {globalDglcBalance !== null && (
+          <div onClick={() => navigate('/dglc/charge')} style={{
+            position: 'fixed', top: '16px', right: '16px', zIndex: 9998,
+            background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+            borderRadius: '12px', padding: '8px 16px', cursor: 'pointer',
+            border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            display: 'flex', alignItems: 'center', gap: '8px',
+            fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif",
+            transition: 'all 0.2s ease',
+          }}>
+            <div style={{
+              width: '24px', height: '24px', borderRadius: '50%',
+              background: 'linear-gradient(135deg, #1F2937, #374151)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <span style={{ color: '#fff', fontSize: '11px', fontWeight: '800' }}>D</span>
+            </div>
+            <span style={{ fontSize: '14px', fontWeight: '700', color: '#1F2937' }}>
+              {Number.isInteger(globalDglcBalance) ? globalDglcBalance : globalDglcBalance.toFixed(1)}
+            </span>
+          </div>
+        )}
         <div className="content-wrapper">
 
           

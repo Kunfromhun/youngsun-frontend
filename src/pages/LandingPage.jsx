@@ -15,6 +15,27 @@ const LandingPage = () => {
   const [activeGenIndex, setActiveGenIndex] = useState(0);
   const [currentGenPanel, setCurrentGenPanel] = useState('panel-plan');
 
+  const dglcSectionRef = useRef(null);
+  const dglcIntervalRef = useRef(null);
+  const [activeDglcIndex, setActiveDglcIndex] = useState(0);
+  const [currentDglcPanel, setCurrentDglcPanel] = useState('panel-charge');
+
+  const dglcData = [
+    { target: 'panel-charge', text: '원하는 만큼,' },
+    { target: 'panel-refund', text: '무조건 환불,' },
+    { target: 'panel-usage', text: '사용한 만큼.' },
+  ];
+  const dglcCaptions = {
+    'panel-charge': '10원 단위부터 자유롭게 충전하세요. 최소 금액도, 월 구독도, 이용권도 없습니다. 첫 회원가입 시 40 DGLC, 매일 로그인할 때마다 10 DGLC를 증정합니다.',
+    'panel-refund': '쓰다 남은 크레딧은 언제든지 현금으로 돌려받을 수 있습니다. 환불 수수료 3.5%를 제외한 전액이 즉시 반환됩니다.',
+    'panel-usage': '자소서 한 편 기준 약 20 DGLC. 각 단계에서 실제로 사용한 기능만큼만 차감되어, 불필요한 비용이 발생하지 않습니다.',
+  };
+
+  const switchDglcPanel = useCallback((targetId, index) => {
+    setCurrentDglcPanel(targetId);
+    setActiveDglcIndex(index);
+  }, []);
+
   const genData = [
     { target: 'panel-plan', text: '계획도 딥글이,' },
     { target: 'panel-write', text: '작성도 딥글이,' },
@@ -156,6 +177,35 @@ const LandingPage = () => {
       if (genIntervalRef.current) clearInterval(genIntervalRef.current);
     };
   }, [switchGenPanel]);
+
+  // DGLC section auto-switch
+  useEffect(() => {
+    const dglcEl = dglcSectionRef.current;
+    if (!dglcEl) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            let idx = 0;
+            switchDglcPanel(dglcData[0].target, 0);
+            dglcIntervalRef.current = setInterval(() => {
+              idx = (idx + 1) % dglcData.length;
+              switchDglcPanel(dglcData[idx].target, idx);
+            }, 4000);
+          } else {
+            if (dglcIntervalRef.current) clearInterval(dglcIntervalRef.current);
+          }
+        });
+      },
+      { threshold: 0.3 }
+    );
+    observer.observe(dglcEl);
+    return () => {
+      observer.disconnect();
+      if (dglcIntervalRef.current) clearInterval(dglcIntervalRef.current);
+    };
+  }, [switchDglcPanel]);
+
   const EditAnimationText = ({ isActive }) => {
     const oldText = '팀원별 업무 진척도';
     const newText = '학생별 프로젝트 진행률';
@@ -719,8 +769,110 @@ const LandingPage = () => {
           background: var(--gray-dark); transform: scale(1.05);
           box-shadow: 0 8px 30px rgba(0,0,0,0.12);
         }
-        .lp-final-cta svg { transition: transform 0.3s; }
+      .lp-final-cta svg { transition: transform 0.3s; }
         .lp-final-cta:hover svg { transform: translateX(4px); }
+
+        /* DGLC PRICING */
+        .lp-dglc {
+          padding: 120px 48px; background: var(--bg);
+        }
+        .lp-dglc-layout {
+          display: flex; gap: 72px; max-width: 1080px; width: 100%;
+          align-items: center; justify-content: center;
+        }
+        .lp-dglc-text { flex: 1 1 280px; min-width: 260px; }
+        .lp-dglc-lines { margin-top: 24px; display: flex; flex-direction: column; gap: 0; }
+        .lp-dglc-line {
+          font-size: clamp(22px, 3vw, 34px); font-weight: 800;
+          color: var(--text-4); letter-spacing: -0.02em; line-height: 1.4;
+          padding: 14px 0; border-bottom: 1px solid var(--border);
+          cursor: pointer; transition: color 0.3s; word-break: keep-all;
+        }
+        .lp-dglc-line:last-child { border-bottom: none; }
+        .lp-dglc-line.lp-active { color: var(--text-1); }
+        .lp-dglc-captions { margin-top: 20px; position: relative; min-height: 80px; }
+        .lp-dglc-caption {
+          position: absolute; top: 0; left: 0;
+          font-size: 14px; color: var(--text-3); line-height: 1.8;
+          opacity: 0; transition: opacity 0.4s; pointer-events: none; word-break: keep-all;
+        }
+        .lp-dglc-caption.lp-active { opacity: 1; position: relative; pointer-events: auto; }
+        .lp-dglc-mockup { flex: 1 1 420px; max-width: 460px; position: relative; min-height: 400px; }
+        .lp-dglc-panel {
+          position: absolute; top: 0; left: 0; width: 100%;
+          background: var(--surface); border: 1px solid var(--border);
+          border-radius: 20px; padding: 32px 28px;
+          opacity: 0; transform: translateY(12px);
+          transition: opacity 0.5s, transform 0.5s; pointer-events: none;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+        }
+        .lp-dglc-panel.lp-active { opacity: 1; transform: none; pointer-events: auto; position: relative; }
+        .lp-dglc-mock-title {
+          font-size: 15px; font-weight: 700; color: var(--text-1);
+          display: flex; align-items: center; gap: 8px; margin-bottom: 24px;
+        }
+        .lp-dglc-mock-title svg { stroke: var(--text-1); flex-shrink: 0; }
+        .lp-dglc-charge-input {
+          background: #F5F5F7; border-radius: 14px; padding: 20px;
+          display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;
+        }
+        .lp-dglc-charge-label { font-size: 13px; color: var(--text-3); }
+        .lp-dglc-charge-value { font-size: 28px; font-weight: 800; color: var(--text-1); letter-spacing: -0.02em; }
+        .lp-dglc-charge-convert { font-size: 13px; color: var(--text-3); text-align: right; margin-bottom: 20px; }
+        .lp-dglc-charge-convert strong { color: var(--text-1); font-weight: 700; }
+        .lp-dglc-charge-btn {
+          width: 100%; padding: 14px; border: none; border-radius: 12px;
+          background: var(--text-1); color: white; font-size: 15px; font-weight: 600;
+        }
+        .lp-dglc-charge-note { margin-top: 12px; font-size: 12px; color: var(--text-4); text-align: center; }
+        .lp-dglc-refund-balance {
+          background: #F5F5F7; border-radius: 14px; padding: 20px; margin-bottom: 20px; text-align: center;
+        }
+        .lp-dglc-refund-balance-label { font-size: 12px; color: var(--text-4); margin-bottom: 6px; }
+        .lp-dglc-refund-balance-value { font-size: 32px; font-weight: 800; color: var(--text-1); }
+        .lp-dglc-refund-balance-unit { font-size: 14px; font-weight: 600; color: var(--text-3); margin-left: 4px; }
+        .lp-dglc-refund-row {
+          display: flex; justify-content: space-between; align-items: center;
+          padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px;
+        }
+        .lp-dglc-refund-row:last-of-type { border-bottom: none; }
+        .lp-dglc-refund-label { color: var(--text-3); }
+        .lp-dglc-refund-value { font-weight: 600; color: var(--text-1); }
+        .lp-dglc-refund-value.fee { color: #EF4444; }
+        .lp-dglc-refund-value.final { color: #10B981; font-weight: 700; }
+        .lp-dglc-refund-btn {
+          width: 100%; padding: 14px; border: none; border-radius: 12px;
+          background: #10B981; color: white; margin-top: 20px; font-size: 15px; font-weight: 600;
+        }
+        .lp-dglc-usage-header {
+          display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
+        }
+        .lp-dglc-usage-total { font-size: 13px; color: var(--text-3); }
+        .lp-dglc-usage-total strong { color: var(--text-1); font-weight: 700; }
+        .lp-dglc-usage-item {
+          display: flex; align-items: center; gap: 14px;
+          padding: 14px 0; border-bottom: 1px solid var(--border);
+        }
+        .lp-dglc-usage-item:last-child { border-bottom: none; }
+        .lp-dglc-usage-icon {
+          width: 36px; height: 36px; border-radius: 10px;
+          background: rgba(31,41,55,0.06);
+          display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .lp-dglc-usage-icon svg { stroke: var(--text-2); }
+        .lp-dglc-usage-info { flex: 1; }
+        .lp-dglc-usage-name { font-size: 14px; font-weight: 600; color: var(--text-1); margin-bottom: 2px; }
+        .lp-dglc-usage-date { font-size: 12px; color: var(--text-4); }
+        .lp-dglc-usage-cost { font-size: 15px; font-weight: 700; color: var(--text-1); white-space: nowrap; }
+
+        @media (max-width: 768px) {
+          .lp-dglc { padding: 100px 24px; }
+          .lp-dglc-layout { flex-direction: column; gap: 48px; }
+          .lp-dglc-text { flex: none; width: 100%; }
+          .lp-dglc-mockup { max-width: 100%; min-height: auto; }
+          .lp-dglc-panel { position: relative; display: none; }
+          .lp-dglc-panel.lp-active { display: block; opacity: 1; transform: none; pointer-events: auto; }
+        }
 
         /* FOOTER */
 .lp-footer {
@@ -1285,6 +1437,120 @@ const LandingPage = () => {
             <p className="lp-gen-compare-label">수정 문단</p>
             <p className="lp-gen-compare-text">진행률 데이터를 시각화하고 병목 구간을 식별하여 일정을 <span className="lp-added">2주 단축한</span> 경험은, 데이터가 의사결정의 <span className="lp-added">핵심</span> 도구가 될 수 있음을 체감하게 해주었습니다.</p>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </section>
+
+{/* DGLC PRICING */}
+<section className="lp-section lp-dglc" ref={dglcSectionRef}>
+  <div className="lp-dglc-layout">
+    <div className="lp-dglc-text">
+      <p className="lp-section-label" translate="no">DGLC Credit System</p>
+      <div className="lp-dglc-lines">
+        {dglcData.map((item, i) => (
+          <p
+            key={i}
+            className={`lp-dglc-line${activeDglcIndex === i ? ' lp-active' : ''}`}
+            onClick={() => {
+              if (dglcIntervalRef.current) clearInterval(dglcIntervalRef.current);
+              switchDglcPanel(item.target, i);
+            }}
+          >
+            {item.text}
+          </p>
+        ))}
+      </div>
+      <div className="lp-dglc-captions">
+        {Object.entries(dglcCaptions).map(([key, text]) => (
+          <p key={key} className={`lp-dglc-caption${currentDglcPanel === key ? ' lp-active' : ''}`}>
+            {text}
+          </p>
+        ))}
+      </div>
+    </div>
+
+    <div className="lp-dglc-mockup lp-reveal lp-d2">
+      {/* 패널 1: 충전 */}
+      <div className={`lp-dglc-panel${currentDglcPanel === 'panel-charge' ? ' lp-active' : ''}`}>
+        <p className="lp-dglc-mock-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M6 12h12"/></svg>
+          DGLC 충전
+        </p>
+        <div className="lp-dglc-charge-input">
+          <span className="lp-dglc-charge-label">충전 금액</span>
+          <span className="lp-dglc-charge-value">₩ 2,000</span>
+        </div>
+        <p className="lp-dglc-charge-convert">충전 후 잔액 → <strong>20.0 DGLC</strong></p>
+        <button className="lp-dglc-charge-btn">충전하기</button>
+        <p className="lp-dglc-charge-note">10원 단위 · 최소 금액 없음 · 토스페이먼츠 결제</p>
+      </div>
+
+      {/* 패널 2: 환불 */}
+      <div className={`lp-dglc-panel${currentDglcPanel === 'panel-refund' ? ' lp-active' : ''}`}>
+        <p className="lp-dglc-mock-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><polyline points="21 3 21 9 15 9"/><path d="M21 9l-6-6"/></svg>
+          환불 신청
+        </p>
+        <div className="lp-dglc-refund-balance">
+          <p className="lp-dglc-refund-balance-label">현재 잔액</p>
+          <span className="lp-dglc-refund-balance-value">15.0</span>
+          <span className="lp-dglc-refund-balance-unit">DGLC</span>
+        </div>
+        <div className="lp-dglc-refund-row">
+          <span className="lp-dglc-refund-label">환불 요청</span>
+          <span className="lp-dglc-refund-value">15.0 DGLC</span>
+        </div>
+        <div className="lp-dglc-refund-row">
+          <span className="lp-dglc-refund-label">수수료 (3.5%)</span>
+          <span className="lp-dglc-refund-value fee">- ₩52</span>
+        </div>
+        <div className="lp-dglc-refund-row">
+          <span className="lp-dglc-refund-label">환불 금액</span>
+          <span className="lp-dglc-refund-value final">₩1,448</span>
+        </div>
+        <button className="lp-dglc-refund-btn">환불받기</button>
+      </div>
+
+      {/* 패널 3: 사용 내역 */}
+      <div className={`lp-dglc-panel${currentDglcPanel === 'panel-usage' ? ' lp-active' : ''}`}>
+        <p className="lp-dglc-mock-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+          사용 내역
+        </p>
+        <div className="lp-dglc-usage-header">
+          <span className="lp-dglc-usage-total">이번 세션 합계 <strong>-20.0 DGLC</strong></span>
+        </div>
+        <div className="lp-dglc-usage-item">
+          <div className="lp-dglc-usage-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          </div>
+          <div className="lp-dglc-usage-info">
+            <p className="lp-dglc-usage-name">초기 분석</p>
+            <p className="lp-dglc-usage-date">이력서 + 채용공고 분석</p>
+          </div>
+          <span className="lp-dglc-usage-cost">-5.0</span>
+        </div>
+        <div className="lp-dglc-usage-item">
+          <div className="lp-dglc-usage-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div className="lp-dglc-usage-info">
+            <p className="lp-dglc-usage-name">경험 구체화</p>
+            <p className="lp-dglc-usage-date">STAR 문답 진행</p>
+          </div>
+          <span className="lp-dglc-usage-cost">-8.0</span>
+        </div>
+        <div className="lp-dglc-usage-item">
+          <div className="lp-dglc-usage-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          </div>
+          <div className="lp-dglc-usage-info">
+            <p className="lp-dglc-usage-name">자소서 생성 + 첨삭</p>
+            <p className="lp-dglc-usage-date">계획서 · 생성 · 첨삭</p>
+          </div>
+          <span className="lp-dglc-usage-cost">-7.0</span>
         </div>
       </div>
     </div>
