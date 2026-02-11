@@ -26,7 +26,7 @@ const GlobalFooter = ({ dark }) => {
         <Link to="/privacy" style={{ fontSize: '11px', color: textColor, textDecoration: 'none' }}>개인정보 처리방침</Link>
         <Link to="/terms" style={{ fontSize: '11px', color: textColor, textDecoration: 'none' }}>이용약관</Link>
       </div>
-      <p style={{ fontSize: '11px', color: textColor }} translate="no">© 2025 DeepGL. All rights reserved.</p>
+      <p style={{ fontSize: '11px', color: textColor }} translate="no">© 2026 DeepGL. All rights reserved.</p>
     </footer>
   );
 };
