@@ -4,7 +4,6 @@
 // Attach this section first when reconstructing App.js
 import React, { useState, useReducer, useRef, useEffect, useCallback } from 'react';
 import { authFetch } from './lib/api';
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app';
 import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';import './App.css';
 import { useAuth } from './contexts/AuthContext';
 import LoginPage from './pages/LoginPage';
@@ -27,6 +26,7 @@ import DGLCChargePage from './pages/DGLCChargePage';
 import DGLCSuccessPage from './pages/DGLCSuccessPage';
 import DGLCFailPage from './pages/DGLCFailPage';
 import GlobalFooter from './pages/GlobalFooter';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://youngsun-xi.vercel.app';
 // ============================================
 // ✅ 한국어 조사 처리 유틸리티
 // ============================================
