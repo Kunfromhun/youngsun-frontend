@@ -199,9 +199,8 @@ const DashboardPage = () => {
        resumes={resumes}
        onClose={() => setShowNewProjectModal(false)}
        onRateLimit={() => {
-         setShowNewProjectModal(false);
-         setShowRateLimitModal(true);
-       }}
+        setShowNewProjectModal(false);
+      }}
        onCreated={(newProject) => {
             setProjects([...projects, newProject]);
             setShowNewProjectModal(false);
