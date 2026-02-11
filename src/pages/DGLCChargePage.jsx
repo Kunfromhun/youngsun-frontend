@@ -234,14 +234,13 @@ const DGLCChargePage = () => {
       <div style={{ width: '100%', maxWidth: '640px', animation: 'fadeInUp 0.6s ease-out' }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <div style={{
+        <div style={{
             width: '64px', height: '64px', borderRadius: '50%',
-            background: 'linear-gradient(135deg, #1F2937 0%, #374151 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
             margin: '0 auto 20px', animation: 'coinSpin 3s ease-in-out infinite',
             boxShadow: '0 8px 32px rgba(31, 41, 55, 0.2)',
+            overflow: 'hidden',
           }}>
-            <span style={{ color: '#fff', fontSize: '20px', fontWeight: '800' }}>D</span>
+            <img src="/logo192.png" alt="DeepGL" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
           <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#1F2937', margin: '0 0 8px 0' }}>DGLC 충전</h1>
           <p style={{ fontSize: '15px', color: '#6B7280', margin: 0, fontWeight: '500' }}>DeepGL Credit</p>
