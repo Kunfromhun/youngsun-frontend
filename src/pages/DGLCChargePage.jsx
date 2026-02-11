@@ -160,7 +160,7 @@ const DGLCChargePage = () => {
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || '환전 실패');
-      setRefundSuccess(`환전 완료! 실수령액: ₩${data.refundKrw?.toLocaleString()}`);
+      setRefundSuccess(`환전 완료! 실수령액: ₩${(data.refundKrw || refundFinal).toLocaleString()}`);
       setRefundInput('');
       fetchBalance(userId);
     } catch (e) {
