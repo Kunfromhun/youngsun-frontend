@@ -16,6 +16,7 @@ const getAuthHeaders = async () => {
 const DGLCChargePage = () => {
   const navigate = useNavigate();
   const [userId, setUserId] = useState(null);
+  const [email, setEmail] = useState('');
   const [balance, setBalance] = useState(null);
 
   // 충전
@@ -43,6 +44,7 @@ const DGLCChargePage = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { navigate('/login'); return; }
       setUserId(session.user.id);
+      setEmail(session.user.email || '');
       fetchBalance(session.user.id);
     };
     init();
@@ -165,11 +167,51 @@ const DGLCChargePage = () => {
   };
 
   return (
+    <div className="dashboard-layout">
+      <aside className="dashboard-sidebar">
+        <div className="sidebar-profile" onClick={() => navigate('/mypage')}>
+          <div className="profile-avatar">
+            {email ? email[0].toUpperCase() : 'U'}
+          </div>
+        </div>
+        <div className="sidebar-spacer" />
+        <button className="sidebar-logout" onClick={() => navigate('/dglc/charge')} title="충전" style={{ marginBottom: '12px', background: 'rgba(0,0,0,0.05)' }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v12M6 12h12" /></svg>
+        </button>
+        <button className="sidebar-logout" onClick={() => navigate('/search')} title="검색" style={{ marginBottom: '12px' }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+        </button>
+        <button className="sidebar-logout" onClick={() => navigate('/database')} title="데이터베이스" style={{ marginBottom: '12px' }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <ellipse cx="12" cy="5" rx="9" ry="3" />
+            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+          </svg>
+        </button>
+        <button className="sidebar-logout" onClick={() => navigate('/dashboard')} title="대시보드" style={{ marginBottom: '12px' }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="3" width="7" height="7" />
+            <rect x="14" y="3" width="7" height="7" />
+            <rect x="3" y="14" width="7" height="7" />
+            <rect x="14" y="14" width="7" height="7" />
+          </svg>
+        </button>
+        <button className="sidebar-logout" onClick={() => { localStorage.clear(); window.location.href = '/login'; }} title="로그아웃">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16,17 21,12 16,7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+        </button>
+      </aside>
     <div style={{
       minHeight: '100vh', background: '#FBFBFD',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif",
-      padding: '20px',
+      padding: '20px', flex: 1,
     }}>
       <style>{`
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -369,9 +411,9 @@ const DGLCChargePage = () => {
         </div>
 
         <p style={{ textAlign: 'center', fontSize: '12px', color: '#9CA3AF', marginTop: '20px' }}>© DeepGL. All rights reserved.</p>
-      </div>
+        </div>
+    </div>
     </div>
   );
 };
-
 export default DGLCChargePage;
