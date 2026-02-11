@@ -117,14 +117,18 @@ const DGLCSuccessPage = () => {
                 </div>
               </div>
             )}
-            <button onClick={() => navigate('/dashboard')}
+          <button onClick={() => {
+              const params = new URLSearchParams(window.location.search);
+              const returnUrl = params.get('returnUrl');
+              navigate(returnUrl || '/dashboard');
+            }}
               style={{
                 width: '100%', padding: '16px', borderRadius: '16px', border: 'none',
                 background: 'linear-gradient(135deg, #1F2937 0%, #374151 100%)',
                 color: '#fff', fontSize: '16px', fontWeight: '700', cursor: 'pointer',
                 fontFamily: "'Pretendard', sans-serif", boxShadow: '0 8px 24px rgba(31,41,55,0.2)',
               }}>
-              대시보드로 이동
+        {new URLSearchParams(window.location.search).get('returnUrl') ? '이어서 진행하기' : '대시보드로 이동'}
             </button>
           </>
         )}

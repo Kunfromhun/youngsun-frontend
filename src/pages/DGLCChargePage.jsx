@@ -128,7 +128,7 @@ const DGLCChargePage = () => {
         amount: { currency: 'KRW', value: data.amount },
         orderId: data.orderId,
         orderName: data.orderName,
-        successUrl: `${window.location.origin}/dglc/success`,
+        successUrl: `${window.location.origin}/dglc/success${window.location.search}`,
         failUrl: `${window.location.origin}/dglc/fail`,
       });
     } catch (e) {

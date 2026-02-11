@@ -1198,6 +1198,9 @@ const [showStarMcq, setShowStarMcq] = useState(false);
 const [starMcqType, setStarMcqType] = useState(''); // 'S' | 'T' | 'A' | 'R'
 const [starMcqQuestion, setStarMcqQuestion] = useState('');
 const [starMcqOptions, setStarMcqOptions] = useState([]);
+// DGLC 잔액 부족 모달
+const [showDglcModal, setShowDglcModal] = useState(false);
+const [dglcModalData, setDglcModalData] = useState({ balance: 0, required: 0, code: '', message: '' });
 const [starMcqLoading, setStarMcqLoading] = useState(false);
 const [starMcqSelections, setStarMcqSelections] = useState([]); // 이전 선택들 저장
 const [starMcqAnswers, setStarMcqAnswers] = useState({}); // { S: '...', T: '...', A: '...', R: '...' }
@@ -5369,6 +5372,15 @@ const renderPlanTable = (plan, showSummarizedExperiences = true) => {
 ///end of section 2///
 
 useEffect(() => {
+  const handleDglcInsufficient = (e) => {
+    setDglcModalData(e.detail);
+    setShowDglcModal(true);
+  };
+  window.addEventListener('dglc-insufficient', handleDglcInsufficient);
+  return () => window.removeEventListener('dglc-insufficient', handleDglcInsufficient);
+}, []);
+
+useEffect(() => {
   // Focus Mode에서는 스크롤 불필요
 }, [chatHistory]);
 
@@ -5525,6 +5537,69 @@ if (screen === 'start' || screen === 'loading' || screen === 'direction-selectio
        <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />} />
   </Routes>
   {isAuthenticated && <GlobalFooter />}
+  {showDglcModal && (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      background: 'rgba(0,0,0,0.5)', display: 'flex',
+      alignItems: 'center', justifyContent: 'center', zIndex: 99999
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: '20px', padding: '36px',
+        maxWidth: '420px', width: '90%', textAlign: 'center',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+        fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif"
+      }}>
+        <div style={{
+          width: '56px', height: '56px', borderRadius: '50%',
+          background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 16px', boxShadow: '0 4px 16px rgba(245,158,11,0.3)'
+        }}>
+          <span style={{ fontSize: '24px' }}>D</span>
+        </div>
+        <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px', color: '#1D1D1F' }}>
+          크레딧이 부족합니다
+        </h3>
+        <p style={{ fontSize: '14px', color: '#6E6E73', lineHeight: 1.7, marginBottom: '4px' }}>
+          현재 잔액: <strong style={{ color: '#1D1D1F' }}>{dglcModalData.balance ?? 0} DGLC</strong>
+        </p>
+        {dglcModalData.required > 0 && (
+          <p style={{ fontSize: '14px', color: '#6E6E73', lineHeight: 1.7, marginBottom: '4px' }}>
+            필요 잔액: <strong style={{ color: '#EF4444' }}>{dglcModalData.required} DGLC</strong>
+          </p>
+        )}
+        <p style={{ fontSize: '13px', color: '#9CA3AF', lineHeight: 1.6, marginBottom: '24px' }}>
+          충전 후 이어서 진행할 수 있습니다.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <button
+            onClick={() => {
+              setShowDglcModal(false);
+              const returnUrl = window.location.pathname + window.location.search;
+              navigate(`/dglc/charge?returnUrl=${encodeURIComponent(returnUrl)}`);
+            }}
+            style={{
+              width: '100%', padding: '14px 20px', borderRadius: '12px',
+              background: '#1D1D1F', color: '#fff', fontSize: '14px',
+              fontWeight: 600, border: 'none', cursor: 'pointer'
+            }}
+          >
+            충전하기
+          </button>
+          <button
+            onClick={() => setShowDglcModal(false)}
+            style={{
+              padding: '14px 20px', borderRadius: '12px',
+              background: 'transparent', border: '1px solid rgba(0,0,0,0.08)',
+              color: '#6E6E73', fontSize: '14px', fontWeight: 500, cursor: 'pointer'
+            }}
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
 
   </>
   );

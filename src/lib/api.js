@@ -55,6 +55,13 @@ const apiCall = async (endpoint, method = 'GET', body = null) => {
     const err = new Error(errorData.details || errorData.error || `HTTP ${response.status}`);
     err.status = response.status;
     err.code = errorData.code || null;
+    err.balance = errorData.balance ?? null;
+    err.required = errorData.required ?? null;
+    if (response.status === 402) {
+      window.dispatchEvent(new CustomEvent('dglc-insufficient', {
+        detail: { balance: errorData.balance, required: errorData.required, code: errorData.code, message: errorData.error }
+      }));
+    }
     throw err;
   }
   
