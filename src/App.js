@@ -5457,13 +5457,38 @@ useEffect(() => {
   const fetchDglcBalance = async () => {
     try {
       const res = await authFetch(`${API_BASE_URL}/api/dglc/balance?userId=${userId}`);
+      if (!res.ok) return;
       const data = await res.json();
       if (data.success) setGlobalDglcBalance(data.balance);
-    } catch (e) { console.error(e); }
+    } catch (e) { /* silent */ }
   };
   fetchDglcBalance();
   const interval = setInterval(fetchDglcBalance, 30000);
   window.addEventListener('dglc-balance-update', fetchDglcBalance);
+
+  // Daily reward 호출
+  const claimDailyReward = async () => {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/api/dglc/daily-reward`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.rewarded) {
+        setDglcRewardToast({
+          type: data.type,
+          amount: data.amount,
+          title: data.type === 'signup' ? 'Welcome to DeepGL!' : 'Welcome back to DeepGL!',
+        });
+        fetchDglcBalance();
+        setTimeout(() => setDglcRewardToast(null), 4000);
+      }
+    } catch (e) { /* silent */ }
+  };
+  claimDailyReward();
+
   return () => { clearInterval(interval); window.removeEventListener('dglc-balance-update', fetchDglcBalance); };
 }, [isAuthenticated, userId]);
 
@@ -5637,6 +5662,53 @@ if (screen === 'start' || screen === 'loading' || screen === 'direction-selectio
             닫기
           </button>
         </div>
+      </div>
+      </div>
+  )}
+  {dglcRewardToast && (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      background: 'rgba(0,0,0,0.5)', display: 'flex',
+      alignItems: 'center', justifyContent: 'center', zIndex: 99999
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: '20px', padding: '36px',
+        maxWidth: '380px', width: '90%', textAlign: 'center',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+        fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif",
+        animation: 'fadeInUp 0.4s ease-out',
+      }}>
+        <div style={{
+          width: '64px', height: '64px', borderRadius: '50%',
+          background: 'linear-gradient(135deg, #1F2937, #374151)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 16px', boxShadow: '0 4px 16px rgba(31,41,55,0.3)',
+        }}>
+          <span style={{ color: '#fff', fontSize: '24px', fontWeight: '800' }}>D</span>
+        </div>
+        <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#1D1D1F', margin: '0 0 8px 0' }}>
+          {dglcRewardToast.title}
+        </h3>
+        <p style={{
+          fontSize: '28px', fontWeight: 900, margin: '0 0 8px 0',
+          background: 'linear-gradient(135deg, #10B981, #059669)',
+          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+        }}>
+          +{dglcRewardToast.amount} DGLC
+        </p>
+        <p style={{ fontSize: '13px', color: '#9CA3AF', margin: '0 0 24px 0' }}>
+          {dglcRewardToast.type === 'signup' ? '가입 축하 보너스가 지급되었습니다!' : '오늘의 출석 보너스가 지급되었습니다!'}
+        </p>
+        <button
+          onClick={() => setDglcRewardToast(null)}
+          style={{
+            width: '100%', padding: '14px 20px', borderRadius: '12px',
+            background: '#1D1D1F', color: '#fff', fontSize: '14px',
+            fontWeight: 600, border: 'none', cursor: 'pointer',
+          }}
+        >
+          확인
+        </button>
       </div>
     </div>
   )}
