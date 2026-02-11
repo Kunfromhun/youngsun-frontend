@@ -5383,25 +5383,6 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
-  if (!isAuthenticated) return;
-  const fetchDglcBalance = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const res = await fetch(`${API_BASE_URL}/api/dglc/balance?userId=${session.user.id}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` }
-      });
-      const data = await res.json();
-      if (data.success) setGlobalDglcBalance(data.balance);
-    } catch (e) { console.error(e); }
-  };
-  fetchDglcBalance();
-  const interval = setInterval(fetchDglcBalance, 30000);
-  window.addEventListener('dglc-balance-update', fetchDglcBalance);
-  return () => { clearInterval(interval); window.removeEventListener('dglc-balance-update', fetchDglcBalance); };
-}, [isAuthenticated]);
-
-useEffect(() => {
   // Focus Mode에서는 스크롤 불필요
 }, [chatHistory]);
 
@@ -5469,7 +5450,23 @@ const ParagraphEditInfoPopup = ({ paragraphId, editInstructions, onClose }) => {
   );
 };
 
-const { isAuthenticated, loading: authLoading, email } = useAuth();
+const { isAuthenticated, loading: authLoading, email, userId } = useAuth();
+
+useEffect(() => {
+  if (!isAuthenticated || !userId) return;
+  const fetchDglcBalance = async () => {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/api/dglc/balance?userId=${userId}`);
+      const data = await res.json();
+      if (data.success) setGlobalDglcBalance(data.balance);
+    } catch (e) { console.error(e); }
+  };
+  fetchDglcBalance();
+  const interval = setInterval(fetchDglcBalance, 30000);
+  window.addEventListener('dglc-balance-update', fetchDglcBalance);
+  return () => { clearInterval(interval); window.removeEventListener('dglc-balance-update', fetchDglcBalance); };
+}, [isAuthenticated, userId]);
+
 if (authLoading) {
   return (
     <div className="app-container">
