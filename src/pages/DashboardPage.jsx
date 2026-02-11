@@ -34,7 +34,6 @@ const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
-  const [showRateLimitModal, setShowRateLimitModal] = useState(false);
   const [showMembershipInfo, setShowMembershipInfo] = useState(false);
       const [resumes, setResumes] = useState([]);
 
@@ -149,16 +148,7 @@ const DashboardPage = () => {
             <div
               className="project-card new-project-card"
               onClick={() => {
-                const recentProject = projects.find(p => {
-                  const created = new Date(p.created_at || p.createdAt);
-                  return (Date.now() - created.getTime()) < 24 * 60 * 60 * 1000;
-                });
-                const unlimitedEmails = ['abbykyung@gmail.com', 'dbqudgns9803@gmail.com'];
-                if (recentProject && !unlimitedEmails.includes(email)) {
-                  setShowRateLimitModal(true);
-                } else {
-                  setShowNewProjectModal(true);
-                }
+                setShowNewProjectModal(true);
               }}            >
               <div className="new-project-logo">
                 <svg width="80" height="80" viewBox="0 0 200 200">
@@ -220,65 +210,7 @@ const DashboardPage = () => {
         />
       )}
 
-      {showRateLimitModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.5)', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', zIndex: 9999
-        }}>
-          <div style={{
-            background: '#fff', borderRadius: '20px', padding: '36px',
-            maxWidth: '420px', width: '90%', textAlign: 'center',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
-          }}>
-            <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
-              <svg width="56" height="56" viewBox="0 0 200 200">
-                <circle cx="100" cy="100" r="80" fill="rgba(156,163,175,0.15)" stroke="rgba(107,114,128,0.3)" strokeWidth="3" />
-                <rect x="92" y="40" width="16" height="120" fill="rgba(74,85,104,0.7)" rx="8" />
-                <rect x="40" y="92" width="120" height="16" fill="rgba(74,85,104,0.7)" rx="8" />
-              </svg>
-            </div>
-            <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px', color: '#1D1D1F' }}>
-              일일 생성 한도 도달
-            </h3>
-            <p style={{ fontSize: '14px', color: '#6E6E73', lineHeight: 1.7, marginBottom: '8px', wordBreak: 'keep-all' }}>
-              일반회원은 24시간 내 프로젝트를 1개만 생성할 수 있습니다.
-            </p>
-            {showMembershipInfo && (
-              <p style={{ fontSize: '14px', color: '#6E6E73', lineHeight: 1.7, marginBottom: '24px', wordBreak: 'keep-all' }}>
-                멤버십을 희망하시면 hyochanggongwon@naver.com으로 문의주세요.
-              </p>
-            )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {!showMembershipInfo && (
-                <button
-                  onClick={() => {
-                    membershipApi.recordInquiry(userId).catch(() => {});
-                    setShowMembershipInfo(true);
-                  }}
-                  style={{
-                    display: 'block', width: '100%', padding: '14px 20px', borderRadius: '12px',
-                    background: '#1D1D1F', color: '#fff', fontSize: '14px',
-                    fontWeight: 600, border: 'none', cursor: 'pointer'
-                  }}
-                >
-                  Becoming a Member
-                </button>
-              )}
-              <button
-                onClick={() => { setShowRateLimitModal(false); setShowMembershipInfo(false); }}
-                style={{
-                  padding: '14px 20px', borderRadius: '12px',
-                  background: 'transparent', border: '1px solid rgba(0,0,0,0.08)',
-                  color: '#6E6E73', fontSize: '14px', fontWeight: 500, cursor: 'pointer'
-                }}
-              >
-                닫기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+   
     </div>
   );
 };
@@ -298,7 +230,6 @@ const NewProjectModal = ({ userId, email, resumes, onClose, onRateLimit, onCreat
   });
   
   const [error, setError] = useState('');
-  const [showQuestionLimitModal, setShowQuestionLimitModal] = useState(false);
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -309,12 +240,6 @@ const NewProjectModal = ({ userId, email, resumes, onClose, onRateLimit, onCreat
     setFormData(prev => ({ ...prev, questions: newQuestions }));
   };
   const addQuestion = () => {
-    const unlimitedEmails = ['abbykyung@gmail.com', 'dbqudgns9803@gmail.com'];
-    const userEmail = email || '';
-    if (formData.questions.length >= 2 && !unlimitedEmails.includes(userEmail)) {
-      setShowQuestionLimitModal(true);
-      return;
-    }
     setFormData(prev => ({
       ...prev,
       questions: [...prev.questions, { text: '', wordLimit: '1000' }]
@@ -607,51 +532,9 @@ return (
           </button>
         </div>
 
-        {showQuestionLimitModal && (
-          <div style={{
-            position: 'fixed',
-            top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10000
-          }}>
-            <div style={{
-              background: '#fff',
-              borderRadius: '16px',
-              padding: '32px',
-              maxWidth: '400px',
-              width: '90%',
-              textAlign: 'center'
-            }}>
-              <p style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#1F2937',
-                lineHeight: '1.6',
-                margin: '0 0 24px 0'
-              }}>
-                일반회원은 프로젝트 생성 시,<br />최대 2개의 문항까지 생성할 수 있습니다.
-              </p>
-              <button
-                onClick={() => setShowQuestionLimitModal(false)}
-                style={{
-                  background: '#1F2937',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '10px 32px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                확인
-              </button>
-            </div>
-          </div>
-        )}
+            
+           
+        
         
         <div style={{
           display: 'flex',
