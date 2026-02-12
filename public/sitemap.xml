@@ -1,18 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://www.deepgl-ai.com/</loc>
-    <priority>1.0</priority>
-    <changefreq>weekly</changefreq>
-  </url>
-  <url>
-    <loc>https://www.deepgl-ai.com/login</loc>
-    <priority>0.8</priority>
-    <changefreq>monthly</changefreq>
-  </url>
-  <url>
-    <loc>https://www.deepgl-ai.com/signup</loc>
-    <priority>0.8</priority>
-    <changefreq>monthly</changefreq>
-  </url>
-</urlset>
+User-agent: *
+Disallow: /login
+Disallow: /signup
+Disallow: /dashboard
+Disallow: /project
+Disallow: /database
+Disallow: /search
+Disallow: /mypage
+Disallow: /dglc
+Allow: /
+Sitemap: https://www.deepgl-ai.com/sitemap.xml
