@@ -155,9 +155,33 @@ export const projectApi = {
     return apiCall(`/projects/${projectId}`, 'PATCH', { userId, ...updates });
   },
   
-  // 전체 전략 분석 실행
+  // [레거시] 전체 전략 분석 실행 (단일 호출)
   initAnalysis: async (projectId, userId) => {
     return apiCall(`/projects/${projectId}/init-analysis`, 'POST', { userId });
+  },
+
+  // 6단계 순차 분석 API
+  analysisStep: async (projectId, userId, stepNumber) => {
+    return apiCall(`/projects/${projectId}/analysis/step${stepNumber}`, 'POST', { userId });
+  },
+
+  // 6단계 순차 분석 전체 실행
+  runAnalysisSteps: async (projectId, userId, onStepComplete) => {
+    const stepLabels = [
+      '공고 분석',
+      '문항 분석', 
+      '역량 모델링',
+      '이력서 매칭',
+      '경험 카드 생성',
+      '방향성 확정'
+    ];
+    
+    for (let step = 1; step <= 6; step++) {
+      if (onStepComplete) onStepComplete(step, 'loading', stepLabels[step - 1]);
+      const result = await apiCall(`/projects/${projectId}/analysis/step${step}`, 'POST', { userId });
+      if (onStepComplete) onStepComplete(step, 'done', stepLabels[step - 1]);
+      if (step === 6) return result;
+    }
   },
   
   // 문항 상태 업데이트

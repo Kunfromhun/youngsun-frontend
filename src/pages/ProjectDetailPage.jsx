@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { projectApi } from '../lib/api';
+
+const STEP_LABELS = ['공고 분석', '문항 분석', '역량 모델링', '이력서 매칭', '경험 카드 생성', '방향성 확정'];
 
 const ProjectDetailPage = () => {
   const { projectId } = useParams();
@@ -13,6 +15,20 @@ const ProjectDetailPage = () => {
   const [error, setError] = useState('');
   const [showAnalysisPopup, setShowAnalysisPopup] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState(null);
+  
+  // 6단계 진행률 state
+  const [analysisSteps, setAnalysisSteps] = useState(
+    STEP_LABELS.map((label, i) => ({ step: i + 1, label, status: 'pending' }))
+  );
+  const [currentStep, setCurrentStep] = useState(0);
+  const [failedStep, setFailedStep] = useState(null);
+  const isMountedRef = useRef(true);
+  const isRunningRef = useRef(false);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   const loadProject = async () => {
     if (!userId || !projectId) return;
@@ -37,51 +53,71 @@ const ProjectDetailPage = () => {
     loadProject();
   }, [projectId, userId]);
 
+  // 분석 상태가 analyzing/pending이면 순차 호출 시작
   useEffect(() => {
-    let pollTimer;
-    let isMounted = true;
-    
     if (!loading && analysisStatus && (analysisStatus === 'analyzing' || analysisStatus === 'pending')) {
-      pollTimer = setInterval(async () => {
-        if (!isMounted) return;
-        
-        try {
-          const status = await projectApi.getAnalysisStatus(projectId, userId);
-          
-          if (!isMounted) return;
-          
-          if (status.analysis_status === 'analyzed' || status.analysis_status === 'failed') {
-            clearInterval(pollTimer);
-            pollTimer = null;
-            setAnalysisStatus(status.analysis_status);
-            loadProject();
-          } else {
-            setAnalysisStatus(status.analysis_status);
-          }
-        } catch (err) {
-          console.error('분석 상태 폴링 오류:', err);
-        }
-      }, 3000);
+      runSteps();
     }
-    
-    return () => {
-      isMounted = false;
-      if (pollTimer) {
-        clearInterval(pollTimer);
-        pollTimer = null;
-      }
-    };
-  }, [loading, analysisStatus, projectId, userId]);
+  }, [loading, analysisStatus]);
 
-  const handleRetryAnalysis = async () => {
-    try {
+  const runSteps = async (startFrom = 1) => {
+    if (isRunningRef.current) return;
+    isRunningRef.current = true;
+    setFailedStep(null);
+
+    // startFrom 이전 스텝은 done으로, 이후는 pending으로 초기화
+    setAnalysisSteps(prev => prev.map((s, i) => ({
+      ...s,
+      status: i + 1 < startFrom ? 'done' : 'pending'
+    })));
+
+    for (let step = startFrom; step <= 6; step++) {
+      if (!isMountedRef.current) break;
+
+      setCurrentStep(step);
+      setAnalysisSteps(prev => prev.map((s, i) => 
+        i + 1 === step ? { ...s, status: 'loading' } : s
+      ));
+
+      try {
+        await projectApi.analysisStep(projectId, userId, step);
+
+        if (!isMountedRef.current) break;
+        setAnalysisSteps(prev => prev.map((s, i) => 
+          i + 1 === step ? { ...s, status: 'done' } : s
+        ));
+      } catch (err) {
+        console.error(`분석 스텝 ${step} 실패:`, err);
+        if (!isMountedRef.current) break;
+
+        setAnalysisSteps(prev => prev.map((s, i) => 
+          i + 1 === step ? { ...s, status: 'failed' } : s
+        ));
+        setFailedStep(step);
+        isRunningRef.current = false;
+        return; // 실패 시 중단
+      }
+    }
+
+    // 전체 완료
+    if (isMountedRef.current) {
+      setAnalysisStatus('analyzed');
+      setCurrentStep(0);
+      loadProject();
+    }
+    isRunningRef.current = false;
+  };
+
+  const handleRetryAnalysis = () => {
+    if (failedStep) {
       setAnalysisStatus('analyzing');
-      await projectApi.initAnalysis(projectId, userId);
-    } catch (err) {
-      console.error('분석 재시도 실패:', err);
-      setError('분석 재시도에 실패했습니다.');
+      runSteps(failedStep); // 실패한 스텝부터 재시도
+    } else {
+      setAnalysisStatus('analyzing');
+      runSteps(1);
     }
   };
+
 
   const getStatusInfo = (status) => {
     const statusMap = {
@@ -225,47 +261,129 @@ const ProjectDetailPage = () => {
           </div>
 
           {(analysisStatus === 'analyzing' || analysisStatus === 'pending') && (
-            <div className="analysis-status-banner" style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '12px 20px',
-              background: 'rgba(0, 122, 255, 0.1)',
-              borderRadius: '12px',
+            <div style={{
+              padding: '20px 24px',
+              background: 'rgba(255,255,255,0.7)',
+              backdropFilter: 'blur(12px)',
+              borderRadius: '16px',
+              border: '1px solid rgba(0,0,0,0.06)',
               marginBottom: '16px'
             }}>
-              <div className="loading-spinner" style={{ width: '20px', height: '20px' }} />
-              <span style={{ color: '#007AFF', fontSize: '14px' }}>AI가 전체 분석을 수행하고 있습니다...</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 600, color: '#1D1D1F' }}>
+                  AI 분석 진행 중 ({analysisSteps.filter(s => s.status === 'done').length}/6)
+                </span>
+                <span style={{ fontSize: '12px', color: '#86868B' }}>
+                  {currentStep > 0 && currentStep <= 6 ? analysisSteps[currentStep - 1]?.label : '준비 중...'}
+                </span>
+              </div>
+
+              {/* 진행률 바 */}
+              <div style={{
+                width: '100%', height: '6px', background: 'rgba(0,0,0,0.06)',
+                borderRadius: '3px', overflow: 'hidden', marginBottom: '16px'
+              }}>
+                <div style={{
+                  width: `${(analysisSteps.filter(s => s.status === 'done').length / 6) * 100}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #007AFF, #5856D6)',
+                  borderRadius: '3px',
+                  transition: 'width 0.5s ease'
+                }} />
+              </div>
+
+              {/* 스텝 리스트 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {analysisSteps.map((s) => (
+                  <div key={s.step} style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '6px 0',
+                    opacity: s.status === 'pending' ? 0.4 : 1,
+                    transition: 'opacity 0.3s ease'
+                  }}>
+                    {/* 상태 아이콘 */}
+                    <div style={{ width: '20px', height: '20px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {s.status === 'done' && (
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                          <circle cx="8" cy="8" r="8" fill="#34C759"/>
+                          <path d="M4.5 8L7 10.5L11.5 5.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                      {s.status === 'loading' && (
+                        <div className="loading-spinner" style={{ width: '16px', height: '16px' }} />
+                      )}
+                      {s.status === 'failed' && (
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                          <circle cx="8" cy="8" r="8" fill="#FF3B30"/>
+                          <path d="M5 5L11 11M11 5L5 11" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                        </svg>
+                      )}
+                      {s.status === 'pending' && (
+                        <div style={{
+                          width: '16px', height: '16px', borderRadius: '50%',
+                          border: '1.5px solid rgba(0,0,0,0.15)'
+                        }} />
+                      )}
+                    </div>
+                    <span style={{
+                      fontSize: '13px',
+                      fontWeight: s.status === 'loading' ? 600 : 400,
+                      color: s.status === 'failed' ? '#FF3B30' : s.status === 'loading' ? '#007AFF' : '#1D1D1F'
+                    }}>
+                      {s.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* 실패 시 재시도 버튼 */}
+              {failedStep && (
+                <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '13px', color: '#FF3B30' }}>
+                    {analysisSteps[failedStep - 1]?.label} 단계에서 오류가 발생했습니다
+                  </span>
+                  <button
+                    onClick={handleRetryAnalysis}
+                    style={{
+                      padding: '8px 16px',
+                      background: '#007AFF',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    이어서 재시도
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
           {analysisStatus === 'failed' && (
-            <div className="analysis-status-banner error" style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '12px 20px',
               background: 'rgba(255, 59, 48, 0.1)',
               borderRadius: '12px',
               marginBottom: '16px'
             }}>
               <span style={{ color: '#FF3B30', fontSize: '14px' }}>분석에 실패했습니다.</span>
-              <button 
+              <button
                 onClick={handleRetryAnalysis}
                 style={{
-                  padding: '6px 12px',
-                  background: '#FF3B30',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  cursor: 'pointer'
+                  padding: '6px 12px', background: '#FF3B30', color: 'white',
+                  border: 'none', borderRadius: '6px', fontSize: '13px', cursor: 'pointer'
                 }}
               >
-                다시 시도
+                처음부터 다시 시도
               </button>
             </div>
           )}
+
+        
         </div>
 
         <div className="questions-grid">
