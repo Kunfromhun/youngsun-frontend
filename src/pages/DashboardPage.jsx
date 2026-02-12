@@ -280,12 +280,16 @@ const NewProjectModal = ({ userId, email, resumes, onClose, onRateLimit, onCreat
         i + 1 === stepNum ? { ...s, status: 'loading' } : s
       ));
       setLoadingMessage(ANALYSIS_STEP_LABELS[stepNum - 1]);
-
       try {
-        await projectApi.analysisStep(projectId, userId, stepNum);
+        const stepResult = await projectApi.analysisStep(projectId, userId, stepNum);
         setAnalysisSteps(prev => prev.map((s, i) =>
           i + 1 === stepNum ? { ...s, status: 'done' } : s
         ));
+        // step6 응답에서 reuseAvailable 저장
+        if (stepNum === 6 && stepResult) {
+          stepResult._reuseAvailable = stepResult.reuseAvailable || false;
+          window.__lastStep6Result = stepResult;
+        }
       } catch (err) {
         console.error(`분석 스텝 ${stepNum} 실패:`, err);
         setAnalysisSteps(prev => prev.map((s, i) =>
@@ -295,15 +299,19 @@ const NewProjectModal = ({ userId, email, resumes, onClose, onRateLimit, onCreat
         return; // 실패 시 중단
       }
     }
-
     // 전체 완료
-    setLoadingMessage('분석 완료!');
-    sendNotification('딥글 세션이 생성되었어요', `${formData.company} / ${formData.jobTitle} 분석이 완료되었습니다.`);
+    const reuseAvailable = window.__lastStep6Result?.reuseAvailable || false;
+    const reuseMsg = reuseAvailable ? ' (재활용 가능한 경험이 있습니다!)' : '';
+    setLoadingMessage('분석 완료!' + reuseMsg);
+    sendNotification(
+      '딥글 세션이 생성되었어요',
+      `${formData.company} / ${formData.jobTitle} 분석이 완료되었습니다.${reuseMsg}`
+    );
     setTimeout(() => {
       onCreated(createdProject || { id: projectId });
-    }, 500);
-  };
+    }, 800);
 
+  }
   const handleRetryStep = () => {
     if (failedStep && createdProject) {
       runAnalysisSteps(createdProject.id, failedStep);
