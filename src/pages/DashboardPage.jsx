@@ -310,8 +310,11 @@ const NewProjectModal = ({ userId, email, resumes, onClose, onRateLimit, onCreat
         return;
       }
     }
-    // 전체 완료 (step7까지 성공)
-    const reuseAvailable = window.__lastStep6Result?.reuseAvailable || false;
+ // 전체 완료 (step7까지 성공)
+ console.log('[DEBUG] step7 완료! 알림 발송 시도');
+ console.log('[DEBUG] lastStep6Result:', window.__lastStep6Result);
+ console.log('[DEBUG] lastStep7Result:', window.__lastStep7Result);
+ const reuseAvailable = window.__lastStep6Result?.reuseAvailable || false;
     const dglcResult = window.__lastStep7Result;
     const reuseMsg = reuseAvailable ? ' (재활용 가능한 경험이 있습니다!)' : '';
     const dglcMsg = dglcResult?.dglcAmount ? ` · ${dglcResult.dglcAmount} DGLC 차감` : '';
