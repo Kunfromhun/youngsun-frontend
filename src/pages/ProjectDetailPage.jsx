@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { projectApi } from '../lib/api';
 
-const STEP_LABELS = ['공고 분석', '문항 분석', '역량 모델링', '이력서 매칭', '경험 카드 생성', '방향성 확정'];
-
+const STEP_LABELS = ['공고 분석', '문항 분석', '역량 모델링', '이력서 매칭', '경험 카드 생성', '방향성 확정', '크레딧 정산'];
 const ProjectDetailPage = () => {
   const { projectId } = useParams();
   const { userId, email } = useAuth();
@@ -71,7 +70,7 @@ const ProjectDetailPage = () => {
       status: i + 1 < startFrom ? 'done' : 'pending'
     })));
 
-    for (let step = startFrom; step <= 6; step++) {
+    for (let step = startFrom; step <= 7; step++) {
       if (!isMountedRef.current) break;
 
       setCurrentStep(step);
@@ -271,8 +270,8 @@ const ProjectDetailPage = () => {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 600, color: '#1D1D1F' }}>
-                  AI 분석 진행 중 ({analysisSteps.filter(s => s.status === 'done').length}/6)
-                </span>
+                AI 분석 진행 중 ({analysisSteps.filter(s => s.status === 'done').length}/7)
+                                </span>
                 <span style={{ fontSize: '12px', color: '#86868B' }}>
                   {currentStep > 0 && currentStep <= 6 ? analysisSteps[currentStep - 1]?.label : '준비 중...'}
                 </span>
@@ -284,7 +283,7 @@ const ProjectDetailPage = () => {
                 borderRadius: '3px', overflow: 'hidden', marginBottom: '16px'
               }}>
                 <div style={{
-                  width: `${(analysisSteps.filter(s => s.status === 'done').length / 6) * 100}%`,
+                  width: `${(analysisSteps.filter(s => s.status === 'done').length / 7) * 100}%`,
                   height: '100%',
                   background: 'linear-gradient(90deg, #007AFF, #5856D6)',
                   borderRadius: '3px',

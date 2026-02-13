@@ -217,7 +217,7 @@ const DashboardPage = () => {
   );
 };
 // 새 프로젝트 생성 모달
-const ANALYSIS_STEP_LABELS = ['공고 분석', '문항 분석', '역량 모델링', '이력서 매칭', '경험 카드 생성', '방향성 확정'];
+const ANALYSIS_STEP_LABELS = ['공고 분석', '문항 분석', '역량 모델링', '이력서 매칭', '경험 카드 생성', '방향성 확정', '크레딧 정산'];
 
 const NewProjectModal = ({ userId, email, resumes, onClose, onRateLimit, onCreated }) => {
   const [step, setStep] = useState(1); // 1: 입력, 2: 분석 중
@@ -273,8 +273,7 @@ const NewProjectModal = ({ userId, email, resumes, onClose, onRateLimit, onCreat
       ...s,
       status: i + 1 < startFrom ? 'done' : 'pending'
     })));
-
-    for (let stepNum = startFrom; stepNum <= 6; stepNum++) {
+    for (let stepNum = startFrom; stepNum <= 7; stepNum++) {
       setCurrentAnalysisStep(stepNum);
       setAnalysisSteps(prev => prev.map((s, i) =>
         i + 1 === stepNum ? { ...s, status: 'loading' } : s
@@ -287,22 +286,36 @@ const NewProjectModal = ({ userId, email, resumes, onClose, onRateLimit, onCreat
         ));
         // step6 응답에서 reuseAvailable 저장
         if (stepNum === 6 && stepResult) {
-          stepResult._reuseAvailable = stepResult.reuseAvailable || false;
           window.__lastStep6Result = stepResult;
+        }
+        // step7 응답 저장 (DGLC 차감 결과)
+        if (stepNum === 7 && stepResult) {
+          window.__lastStep7Result = stepResult;
         }
       } catch (err) {
         console.error(`분석 스텝 ${stepNum} 실패:`, err);
+        // step7 잔액 부족(402) 특별 처리
+        if (stepNum === 7 && err.status === 402) {
+          setAnalysisSteps(prev => prev.map((s, i) =>
+            i + 1 === stepNum ? { ...s, status: 'failed' } : s
+          ));
+          setFailedStep(7);
+          setLoadingMessage(`잔액이 부족합니다 (보유: ${err.balance ?? '?'} DGLC, 필요: ${err.required ?? '?'} DGLC)`);
+          return;
+        }
         setAnalysisSteps(prev => prev.map((s, i) =>
           i + 1 === stepNum ? { ...s, status: 'failed' } : s
         ));
         setFailedStep(stepNum);
-        return; // 실패 시 중단
+        return;
       }
     }
-    // 전체 완료
+    // 전체 완료 (step7까지 성공)
     const reuseAvailable = window.__lastStep6Result?.reuseAvailable || false;
+    const dglcResult = window.__lastStep7Result;
     const reuseMsg = reuseAvailable ? ' (재활용 가능한 경험이 있습니다!)' : '';
-    setLoadingMessage('분석 완료!' + reuseMsg);
+    const dglcMsg = dglcResult?.dglcAmount ? ` · ${dglcResult.dglcAmount} DGLC 차감` : '';
+    setLoadingMessage('분석 완료!' + reuseMsg + dglcMsg);
     sendNotification(
       '딥글 세션이 생성되었어요',
       `${formData.company} / ${formData.jobTitle} 분석이 완료되었습니다.${reuseMsg}`
@@ -310,7 +323,6 @@ const NewProjectModal = ({ userId, email, resumes, onClose, onRateLimit, onCreat
     setTimeout(() => {
       onCreated(createdProject || { id: projectId });
     }, 800);
-
   }
   const handleRetryStep = () => {
     if (failedStep && createdProject) {
@@ -413,7 +425,7 @@ if (step === 2) {
           fontSize: '20px',
           fontWeight: '700',
           margin: 0
-        }}>AI 분석 진행 중 ({doneCount}/6)</p>
+        }}>AI 분석 진행 중 ({doneCount}/7)</p>
 
         {/* 진행률 바 */}
         <div style={{
@@ -421,7 +433,8 @@ if (step === 2) {
           borderRadius: '3px', overflow: 'hidden'
         }}>
           <div style={{
-            width: `${(doneCount / 6) * 100}%`,
+                    width: `${(doneCount / 7) * 100}%`,
+
             height: '100%',
             background: 'linear-gradient(90deg, #007AFF, #5856D6)',
             borderRadius: '3px',
